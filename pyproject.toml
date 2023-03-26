@@ -1,0 +1,8 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="jsont"
+description = "A package for converting classes with type hints to/from Json"
+dynamic = ["version"]

@@ -1,9 +1,9 @@
 from inspect import isclass, get_annotations
 from types import NoneType
-from typing import Any, Union, Sequence, Mapping, Type, TypeVar, get_origin, get_args, Callable, Iterable, Tuple, cast, \
-    List
+from typing import Any, Union, Sequence, Mapping, Type, TypeVar, get_origin, get_args, Callable, Iterable, Tuple, \
+    cast, List, Literal
 
-JsonNull = NoneType
+JsonNull = Literal[None]
 JsonSimple = Union[int, float, str, bool]
 JsonComplex = Union[Sequence["Json"], Mapping[str, "Json"]]
 Json = Union[JsonNull, JsonSimple, JsonComplex]
@@ -16,23 +16,23 @@ R = TypeVar("R")
 NO_SUCCESS = object()
 
 
-def first_success(f: Callable[..., R], i: Iterable[Tuple]) -> Tuple[Union[R, object], Sequence[ValueError]]:
+def first_success(f: Callable[..., R], i: Iterable[Tuple]) -> Union[R, Sequence[ValueError]]:
     failures: List[ValueError] = []
     for args in i:
         try:
-            return f(*args), failures
+            return f(*args)
         except ValueError as e:
             failures.append(e)
             pass
-    return NO_SUCCESS, failures
+    return failures
 
 
 class TypedJson:
 
     def to_json(self, o: Any) -> Json:
-        if isinstance(o, JsonNull):
+        if o is None:
             return self._null_to_json(o)
-        if isinstance(o, JsonSimple):
+        if isinstance(o, get_args(JsonSimple)):
             return self._simple_to_json(o)
         if isinstance(o, Sequence):
             return self._sequence_to_json(o)
@@ -42,14 +42,16 @@ class TypedJson:
 
     def from_json(self, js: Json, cl: Type[T]) -> T:
         origin_of_generic = get_origin(cl)
-        annotations = get_annotations(cl)
+        annotations = get_annotations(cl) if cl else {}
         if cl is Any:
-            return js
+            return cast(Any, js)
         if origin_of_generic is Union:
             return self._union_from_json(js, cl)
-        if cl is JsonNull:
-            return self._null_from_json(js)
-        if isclass(cl) and issubclass(cl, JsonSimple):
+        if origin_of_generic is Literal:
+            return self._literal_from_json(js, cl)
+        if cl is NoneType or cl is None:
+            return cast(T, self._null_from_json(js))
+        if isclass(cl) and issubclass(cl, get_args(JsonSimple)):
             return self._simple_from_json(js, cl)
         if isclass(origin_of_generic) and issubclass(origin_of_generic, tuple):
             return self._tuple_from_json(js, cl)
@@ -58,7 +60,7 @@ class TypedJson:
         if isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Mapping):
             return self._mapping_from_json(js, cl)
         if isclass(cl) and issubclass(cl, Mapping):
-            return self._typed_mapping_from_json(js, cl, annotations)
+            return cast(T, self._typed_mapping_from_json(js, cl, annotations))
         raise ValueError(f"{cl}{f' ({origin_of_generic})' if origin_of_generic else ''} as target type not supported")
 
     @staticmethod
@@ -66,51 +68,60 @@ class TypedJson:
         return js
 
     @staticmethod
-    def _simple_from_json(js: JsonSimple, cl: Type[JsonSimple]) -> Json:
+    def _simple_from_json(js: Json, cl: Type[T]) -> T:
         if isinstance(js, cl):
-            return cl(js)
+            return js
         raise ValueError(f"Cannot convert {js} to {cl}")
 
     @staticmethod
-    def _null_to_json(o: JsonNull) -> JsonNull:
-        return cast(JsonNull, None)
+    def _null_to_json(_o: JsonNull) -> JsonNull:
+        return None
 
     @staticmethod
     def _null_from_json(js: Any) -> None:
-        if isinstance(js, JsonNull):
+        if js is None:
             return None
         raise ValueError(f"Cannot convert {js} to None")
+
+    @staticmethod
+    def _literal_from_json(js: Json, cl: Type[T]) -> T:
+        literals = get_args(cl)
+        if js in literals:
+            return cast(T, js)
+        raise ValueError(f"Cannot convert {js} to any of {literals}")
 
     def _union_from_json(self, js: Json, cl: Type[T]) -> T:
         union_types = get_args(cl)
         # a str is also a Sequence of str so check str first to avoid that
         # it gets converted to a Sequence of str
         union_types_with_str_first = ([str] if str in union_types else []) + [ty for ty in union_types if ty is not str]
-        res, failures = first_success(self.from_json, ((js, ty) for ty in union_types_with_str_first))
-        if res != NO_SUCCESS:
-            return res
-        raise ValueError(f"Cannot convert {js} to any of {union_types_with_str_first}: "
-                         f"{list(zip(union_types_with_str_first, failures))}")
+        res_or_failures = first_success(self.from_json, ((js, ty) for ty in union_types_with_str_first))
+        if res_or_failures \
+                and isinstance(res_or_failures, list) \
+                and all(isinstance(e, ValueError) for e in res_or_failures):
+            raise ValueError(f"Cannot convert {js} to any of {union_types_with_str_first}: "
+                             f"{list(zip(union_types_with_str_first, res_or_failures))}")
+        return cast(T, res_or_failures)
 
     def _sequence_to_json(self, li: Sequence[Any]) -> Sequence[Json]:
         return [self.to_json(e) for e in li]
 
     def _tuple_from_json(self, js: Json, cl: Type[T]) -> T:
-        element_types = get_args(cl)
+        element_types: Sequence[Any] = get_args(cl)
         if element_types.count(...) > 1:
             raise ValueError(f"Cannot convert {js} to {cl} as {cl} has more than one ... parameter")
         if isinstance(js, Sequence):
             element_types = replace_ellipsis(element_types, len(js))
             if len(js) != len(element_types):
                 raise ValueError(f"Cannot convert {js} to {cl} as number of type parameter do not match")
-            return tuple(self.from_json(e, ty) for e, ty in zip(js, element_types))
+            return cast(T, tuple(self.from_json(e, ty) for e, ty in zip(js, element_types)))
         raise ValueError(f"Cannot convert {js} to {cl} as types are not convertible")
 
     def _sequence_from_json(self, js: Json, cl: Type[T]) -> T:
         element_types = get_args(cl) or (Any,)
         assert len(element_types) == 1
         if isinstance(js, Sequence):
-            return [self.from_json(e, element_types[0]) for e in js]
+            return cast(T, [self.from_json(e, element_types[0]) for e in js])
         raise ValueError(f"Cannot convert {js} to {cl}")
 
     def _mapping_to_json(self, o: Mapping[Any, Any]) -> Mapping[str, Json]:
@@ -127,33 +138,32 @@ class TypedJson:
         if key_type is not str:
             raise ValueError(f"Cannot convert {js} to mapping with key-type: {key_type}")
         if isinstance(js, Mapping):
-            return {k: self.from_json(v, value_type) for k, v in js.items()}
+            return cast(T, {k: self.from_json(v, value_type) for k, v in js.items()})
         raise ValueError(f"Cannot convert {js} to {cl}")
 
     def _typed_mapping_from_json(self, js: Json, cl: Type[T], annotations: Mapping[str, type]) -> T:
-        def type_for_key(k: str) -> type:
+        def type_for_key(k: str) -> Type[S]:
             t = annotations.get(k)
             if t:
-                return t
+                return cast(Type[S], t)
             raise ValueError(f"Cannot convert {js} to {cl} as it contains unknown key {k}")
 
-        if isinstance(js, Mapping):
-            if cl.__required_keys__.issubset(frozenset(js.keys())):
-                return {k: self.from_json(v, type_for_key(k)) for k, v in js.items()}  # type: ignore
+        if isinstance(js, Mapping) and hasattr(cl, "__required_keys__"):
+            if cl.__required_keys__.issubset(frozenset(js.keys())):  # type: ignore
+                return cast(T, {k: self.from_json(v, type_for_key(k)) for k, v in js.items()})
             raise ValueError(f"Cannot convert {js} to {cl} "
-                             f"as it does not contain all required keys {cl.__required_keys__}")
+                             f"as it does not contain all required keys {cl.__required_keys__}")  # type: ignore
         raise ValueError(f"Cannot convert {js} to {cl}")
 
 
-def replace_ellipsis(element_types: Sequence[Type[T]], expected_len: int) -> Sequence[Type[T]]:
+def replace_ellipsis(element_types: Sequence[Any], expected_len: int) -> Sequence[Any]:
     if ... in element_types:
-        element_types = fill_ellipsis(element_types, expected_len, Any)
+        element_types = fill_ellipsis(element_types, expected_len, Any)  # type: ignore
     return element_types
 
 
-def fill_ellipsis(types: Sequence[Type[T]], expected_len: int, fill_type: Type[T]) -> Sequence[Type[T]]:
+def fill_ellipsis(types: Sequence[Any], expected_len: int, fill_type: Type[T]) -> Sequence[Type[T]]:
     types = list(types)
     ellipsis_idx = types.index(...)
-    types[ellipsis_idx:ellipsis_idx+1]=[fill_type] * (expected_len - len(types) + 1)
+    types[ellipsis_idx:ellipsis_idx + 1] = [fill_type] * (expected_len - len(types) + 1)
     return types
-

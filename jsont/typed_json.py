@@ -1,7 +1,7 @@
-from inspect import isclass, get_annotations
+from inspect import get_annotations, isclass
 from types import NoneType
-from typing import Any, Union, Sequence, Mapping, Type, TypeVar, get_origin, get_args, Callable, Iterable, Tuple, \
-    cast, List, Literal
+from typing import (Any, Callable, Iterable, List, Literal, Mapping, Sequence, Tuple, Type, TypeVar,
+                    Union, cast, get_args, get_origin)
 
 JsonNull = Literal[None]
 JsonSimple = Union[int, float, str, bool]
@@ -23,7 +23,6 @@ def first_success(f: Callable[..., R], i: Iterable[Tuple]) -> Union[R, Sequence[
             return f(*args)
         except ValueError as e:
             failures.append(e)
-            pass
     return failures
 
 
@@ -61,7 +60,8 @@ class TypedJson:
             return self._mapping_from_json(js, cl)
         if isclass(cl) and issubclass(cl, Mapping):
             return cast(T, self._typed_mapping_from_json(js, cl, annotations))
-        raise ValueError(f"{cl}{f' ({origin_of_generic})' if origin_of_generic else ''} as target type not supported")
+        raise ValueError(f"{cl}{f' ({origin_of_generic})' if origin_of_generic else ''} "
+                         "as target type not supported")
 
     @staticmethod
     def _simple_to_json(js: JsonSimple) -> Json:
@@ -94,8 +94,10 @@ class TypedJson:
         union_types = get_args(cl)
         # a str is also a Sequence of str so check str first to avoid that
         # it gets converted to a Sequence of str
-        union_types_with_str_first = ([str] if str in union_types else []) + [ty for ty in union_types if ty is not str]
-        res_or_failures = first_success(self.from_json, ((js, ty) for ty in union_types_with_str_first))
+        union_types_with_str_first = (([str] if str in union_types else [])
+                                      + [ty for ty in union_types if ty is not str])
+        res_or_failures = first_success(self.from_json,
+                                        ((js, ty) for ty in union_types_with_str_first))
         if res_or_failures \
                 and isinstance(res_or_failures, list) \
                 and all(isinstance(e, ValueError) for e in res_or_failures):
@@ -113,7 +115,8 @@ class TypedJson:
         if isinstance(js, Sequence):
             element_types = replace_ellipsis(element_types, len(js))
             if len(js) != len(element_types):
-                raise ValueError(f"Cannot convert {js} to {cl} as number of type parameter do not match")
+                raise ValueError(
+                    f"Cannot convert {js} to {cl} as number of type parameter do not match")
             return cast(T, tuple(self.from_json(e, ty) for e, ty in zip(js, element_types)))
         raise ValueError(f"Cannot convert {js} to {cl} as types are not convertible")
 
@@ -151,8 +154,10 @@ class TypedJson:
         if isinstance(js, Mapping) and hasattr(cl, "__required_keys__"):
             if cl.__required_keys__.issubset(frozenset(js.keys())):  # type: ignore
                 return cast(T, {k: self.from_json(v, type_for_key(k)) for k, v in js.items()})
-            raise ValueError(f"Cannot convert {js} to {cl} "
-                             f"as it does not contain all required keys {cl.__required_keys__}")  # type: ignore
+            raise ValueError(
+                f"Cannot convert {js} to {cl} "
+                f"as it does not contain all required keys {cl.__required_keys__}"  # type: ignore
+            )
         raise ValueError(f"Cannot convert {js} to {cl}")
 
 

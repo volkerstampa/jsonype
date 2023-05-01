@@ -1,12 +1,12 @@
-from random import choice, randint, uniform, randrange, choices, gauss
-from string import printable, digits, ascii_letters
+from random import choice, choices, gauss, randint, randrange, uniform
+from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import Union, Any, Type, Optional, Sequence, Mapping, TypedDict, Tuple, List, Callable, Iterable, \
-    cast
+from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type,
+                    TypedDict, Union, cast)
 from unittest import TestCase, main
 
-from jsont.typed_json import TypedJson, T
+from jsont.typed_json import T, TypedJson
 
 ObjectFactory = Callable[[int, Sequence["ObjectFactory"]], Tuple[T, Type[T]]]
 
@@ -34,7 +34,8 @@ class TypedJsonTestCase(TestCase):
             self.assert_can_convert_from_to_json(li, Sequence[ty])
 
     def test_inhomogeneous_sequence(self):
-        self.assert_can_convert_from_to_json([1, 0., True, None, "Hello"], Sequence[Union[int, float, bool, None, str]])
+        self.assert_can_convert_from_to_json([1, 0., True, None, "Hello"],
+                                             Sequence[Union[int, float, bool, None, str]])
 
     def test_homogeneous_mapping(self):
         for m, ty in [
@@ -66,7 +67,9 @@ class TypedJsonTestCase(TestCase):
             print(f"Cannot convert {obj} to {ty}")
             raise
 
-    def _random_typed_object(self, size: int, factories: Optional[Sequence[ObjectFactory]] = None) -> Tuple[T, Type[T]]:
+    def _random_typed_object(self, size: int,
+                             factories: Optional[Sequence[ObjectFactory]] = None) \
+            -> Tuple[T, Type[T]]:
         factories = factories or self._all_types_factories()
         return choice(factories)(size, factories)
 
@@ -115,25 +118,30 @@ class TypedJsonTestCase(TestCase):
     def _random_str(size: int, _factories: Sequence[ObjectFactory]) -> Tuple[str, Type[str]]:
         return ''.join(choices(printable, k=randrange(size))), str
 
-    def _random_sequence(self, size: int, factories: Sequence[ObjectFactory]) -> Tuple[Sequence[T], Type[Sequence[T]]]:
+    def _random_sequence(self, size: int, factories: Sequence[ObjectFactory]) \
+            -> Tuple[Sequence[T], Type[Sequence[T]]]:
         seq, types = self._random_values(size, factories)
         return list(seq), Sequence[Union[*types]]  # type: ignore
 
     def _random_untyped_sequence(self, size: int, factories: Sequence[ObjectFactory]) \
             -> Tuple[Sequence[T], Type[Sequence]]:
-        unambiguous_factories = tuple(frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
-        seq, types = self._random_values(size, unambiguous_factories)
+        unambiguous_factories = tuple(
+            frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
+        seq, _types = self._random_values(size, unambiguous_factories)
         return list(seq), Sequence
 
-    def _random_tuple(self, size, factories: Sequence[ObjectFactory]) -> Tuple[Tuple[Any, ...], Type[Tuple[Any, ...]]]:
+    def _random_tuple(self, size, factories: Sequence[ObjectFactory]) \
+            -> Tuple[Tuple[Any, ...], Type[Tuple[Any, ...]]]:
         seq, types = self._random_values(size, factories)
         return tuple(seq), cast(Type[Tuple[Any, ...]], Tuple[*types] if seq else Tuple[()])
 
     def _random_tuple_with_ellipsis(self, size, factories: Sequence[ObjectFactory]) \
             -> Tuple[Tuple[Any, ...], Type[Tuple[Any, ...]]]:
-        unambiguous_factories = tuple(frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
+        unambiguous_factories = tuple(
+            frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
         seq, types = self._random_values(size, unambiguous_factories)
-        return tuple(seq), cast(Type[Tuple[Any, ...]], Tuple[*insert_random_ellipsis(types)] if seq else Tuple[()])
+        return tuple(seq), cast(Type[Tuple[Any, ...]],
+                                Tuple[*insert_random_ellipsis(types)] if seq else Tuple[()])
 
     def _random_map(self, size: int, factories: Sequence[ObjectFactory]) \
             -> Tuple[Mapping[str, T], Type[Mapping[str, T]]]:
@@ -143,11 +151,13 @@ class TypedJsonTestCase(TestCase):
 
     def _random_untyped_map(self, size: int, factories: Sequence[ObjectFactory]) \
             -> Tuple[Mapping[str, T], Type[Mapping]]:
-        unambiguous_factories = tuple(frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
-        vals, types = self._random_values(size, unambiguous_factories)
+        unambiguous_factories = tuple(
+            frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
+        vals, _types = self._random_values(size, unambiguous_factories)
         return {self._random_str(size, factories)[0]: val for val in vals}, Mapping
 
-    def _random_typed_map(self, size: int, factories: Sequence[ObjectFactory]) -> Tuple[Mapping, Type[Mapping]]:
+    def _random_typed_map(self, size: int, factories: Sequence[ObjectFactory]) \
+            -> Tuple[Mapping, Type[Mapping]]:
         vals, types = self._random_values(size, factories)
         keys = [self._random_symbol() for _ in vals]
         # noinspection PyPep8Naming
@@ -158,7 +168,8 @@ class TypedJsonTestCase(TestCase):
     def _random_symbol() -> str:
         return ''.join(choices(ascii_letters + digits, k=10))
 
-    def _random_values(self, size, factories: Sequence[ObjectFactory]) -> Tuple[Sequence[Any], Sequence[Type[Any]]]:
+    def _random_values(self, size, factories: Sequence[ObjectFactory]) \
+            -> Tuple[Sequence[Any], Sequence[Type[Any]]]:
         previous_types: List[type] = []
 
         def add_to_previous(val: Any, ty: Type[Any]) -> Tuple[Any, Type[Any]]:
@@ -178,7 +189,8 @@ class TypedJsonTestCase(TestCase):
         values_with_types: Iterable[Tuple[Any, Type[Any]]] = \
             (self._random_typed_object(size // 2, factories) for _ in range(randrange(size)))
         value_and_types = cast(Tuple[Sequence[Any], Sequence[Type[Any]]], tuple(
-            zip(*(add_to_previous(val, ty) for val, ty in values_with_types if cannot_convert_to_previous_type(val)))))
+            zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
+                  cannot_convert_to_previous_type(val)))))
         return value_and_types or ((), (Any,))
 
 

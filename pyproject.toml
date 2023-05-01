@@ -3,6 +3,30 @@ requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name="jsont"
+name = "jsont"
 description = "A package for converting classes with type hints to/from Json"
 dynamic = ["version"]
+
+[tool.pylama]
+linters = "eradicate,mccabe,mypy,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture,isort"
+skip = "docs/*"
+
+[tool.pylama.linter.pydocstyle]
+ignore = "D100,D101,D102,D103,D104"
+
+[tool.pydocstyle]
+ignore = "D100,D101,D102,D103,D104"
+
+[tool.mypy]
+cache_dir = "build/.mypy_cache"
+#strict = "True"
+files = "jsont,tests"
+
+[tool.isort]
+line_length = 100
+
+[tool.pylint."messages control"]
+disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
+
+[tool.vulture]
+min_confidence = 61

@@ -1,5 +1,9 @@
 # jsont
 
+TODO: - add scripts for checking (mypy, tests, other linters)
+Check pylama https://github.com/klen/pylama
+or https://realpython.com/python-code-quality/
+
 ## development
 
 ### prerequisites

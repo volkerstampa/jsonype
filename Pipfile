@@ -2,6 +2,9 @@
 mypy = "*"
 build = "*"
 sphinx = "*"
+pydocstyle = {extras = ["toml"], version = "*"}
+pylint = "*"
+pylama = "*"
 
 [requires]
 python_version = "3.11"

@@ -24,9 +24,17 @@ files = "jsont,tests"
 
 [tool.isort]
 line_length = 100
+src_paths = ["jsont", "tests"]
 
 [tool.pylint."messages control"]
 disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
+ignore = ["docs"]
+recursive = true
+
+[tool.radon]
+ignore = ["docs"]
+cc_min = "C"
 
 [tool.vulture]
 min_confidence = 61
+paths = ["jsont", "tests"]

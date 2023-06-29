@@ -14,8 +14,6 @@ S = TypeVar("S")
 LI = TypeVar("LI", bound=Sequence)
 R = TypeVar("R")
 
-NO_SUCCESS = object()
-
 
 def first_success(f: Callable[..., R], i: Iterable[Tuple]) -> Union[R, Sequence[ValueError]]:
     failures: List[ValueError] = []
@@ -209,6 +207,58 @@ class ToTypedMapping(FromJsonConverter[T]):
         raise ValueError(f"Cannot convert {js} to {cl}")
 
 
+class ToJsonConverter(ABC, Generic[T]):
+
+    @abstractmethod
+    def can_convert(self, o: Any) -> bool:
+        pass
+
+    @abstractmethod
+    def convert(self, o: T, to_json: Callable[[Any], Json]) -> Json:
+        pass
+
+
+class FromNull(ToJsonConverter[JsonNull]):
+
+    def can_convert(self, o: Any) -> bool:
+        return o is None
+
+    def convert(self, o: JsonNull, to_json: Callable[[Any], Json]) -> JsonNull:
+        return None
+
+
+class FromSimple(ToJsonConverter[JsonSimple]):
+
+    def can_convert(self, o: Any) -> bool:
+        return isinstance(o, get_args(JsonSimple))
+
+    def convert(self, o: JsonSimple, to_json: Callable[[Any], Json]) -> JsonSimple:
+        return o
+
+
+class FromSequence(ToJsonConverter[Sequence[Any]]):
+
+    def can_convert(self, o: Any) -> bool:
+        return isinstance(o, Sequence)
+
+    def convert(self, o: Sequence[Any], to_json: Callable[[Any], Json]) -> Json:
+        return [to_json(e) for e in o]
+
+
+class FromMapping(ToJsonConverter[Mapping[Any, Any]]):
+
+    def can_convert(self, o: Any) -> bool:
+        return isinstance(o, Mapping)
+
+    def convert(self, o: Mapping[Any, Any], to_json: Callable[[Any], Json]) -> Json:
+        def ensure_str(k: Any) -> str:
+            if isinstance(k, str):
+                return k
+            raise ValueError(f"Cannot convert {o} to json as it contains a non-str key: {k}")
+
+        return {ensure_str(k): to_json(v) for k, v in o.items()}
+
+
 class TypedJson:
 
     def __init__(self):
@@ -223,17 +273,20 @@ class TypedJson:
             ToMapping(),
             ToTypedMapping(),
         ]
+        self._to_json_converters = [
+            FromNull(),
+            FromSimple(),
+            FromSequence(),
+            FromMapping(),
+        ]
 
     def to_json(self, o: Any) -> Json:
-        if o is None:
-            return self._null_to_json(o)
-        if isinstance(o, get_args(JsonSimple)):
-            return self._simple_to_json(o)
-        if isinstance(o, Sequence):
-            return self._sequence_to_json(o)
-        if isinstance(o, Mapping):
-            return self._mapping_to_json(o)
-        raise ValueError(f"{o} of type {type(o)} no yet supported")
+        converter = next((conv for conv in self._to_json_converters if
+                          conv.can_convert(o)),
+                         None)
+        if not converter:
+            raise ValueError(f"{o} of type {type(o)} cannot be converted to Json")
+        return converter.convert(o, self.to_json)
 
     def from_json(self, js: Json, cl: Type[T]) -> T:
         origin_of_generic = get_origin(cl)

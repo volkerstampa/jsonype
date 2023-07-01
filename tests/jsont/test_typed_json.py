@@ -3,10 +3,13 @@ from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
 from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type,
-                    TypedDict, Union, cast)
+                    TypedDict, TypeVar, Union, cast)
 from unittest import TestCase, main
 
-from jsont.typed_json import T, TypedJson
+from jsont.typed_json import TypedJson
+
+T = TypeVar("T")
+
 
 ObjectFactory = Callable[[int, Sequence["ObjectFactory"]], Tuple[T, Type[T]]]
 

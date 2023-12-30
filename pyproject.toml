@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jsont"
-description = "A package for converting classes with type hints to/from Json"
+description = "A package for converting classes with type hints to/from JSON"
 dynamic = ["version"]
 
 [tool.pylama]

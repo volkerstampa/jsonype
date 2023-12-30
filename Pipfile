@@ -13,6 +13,7 @@ toml = "*"
 pylama = "*"
 vulture = "*"
 eradicate = "*"
+sphinx-rtd-theme = "*"
 
 [requires]
 python_version = "3.11"

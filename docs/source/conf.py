@@ -2,9 +2,9 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
-
 import os
 import sys
+from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -25,15 +25,18 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx'
+    'sphinx.ext.intersphinx',
+    'sphinx_rtd_theme'
 ]
 intersphinx_mapping = {'python': ('https://docs.python.org/', None)}
 templates_path = ['_templates']
 exclude_patterns = []
 
+doctest_default_flags = NORMALIZE_WHITESPACE | ELLIPSIS
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']

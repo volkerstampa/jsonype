@@ -3,47 +3,51 @@ from typing import Any, Callable, Generic, Mapping, Sequence, TypeVar, get_args
 
 from jsont.base_types import Json, JsonNull, JsonSimple
 
-T = TypeVar("T")
+SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
 
 
-class ToJsonConverter(ABC, Generic[T]):
-    """The base-class for converters that convert to objects representing json.
+class ToJsonConverter(ABC, Generic[SourceType_contra]):
+    """The base-class for converters that convert to objects representing JSON.
 
-    Converters that convert objects of their specific type `T` to objects representing json have to
-    implement the two abstract methods defined in this base-class.
+    Converters that convert objects of their specific type ``T`` to objects representing JSON have
+    to implement the two abstract methods defined in this base-class.
+
+    SourceType_contra:
+        The type of the object that shall be converted into an object representing JSON.
     """
 
     @abstractmethod
     def can_convert(self, o: Any) -> bool:
-        """Return if this converter can convert the given object to an object representing json.
+        """Return if this converter can convert the given object to an object representing JSON.
 
         Args:
-            o: the object to be converted to an object representing json
+            o: the object to be converted to an object representing JSON
         Returns:
-            `true` if this converter can convert the given object into an object representing json,
-            `false` otherwise.
+            ``True`` if this converter can convert the given object into
+            an object representing JSON,
+            ``False`` otherwise.
         """
 
     @abstractmethod
-    def convert(self, o: T, to_json: Callable[[Any], Json]) -> Json:
-        """Convert the given object of type `T` to an object representing json.
+    def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+        """Convert the given object of type ``T`` to an object representing JSON.
 
         Args:
             o: the object to convert
             to_json: If this converter converts container types like :class:`typing.Sequence`
                 this function is used to convert the contained objects into their corresponding
-                objects representing json.
+                objects representing JSON.
         Returns:
-            the converted object representing json.
+            the converted object representing JSON.
         Raises:
-            ValueError: If the object cannot be converted to an object representing json.
+            ValueError: If the object cannot be converted to an object representing JSON.
         """
 
 
 class FromNone(ToJsonConverter[JsonNull]):
-    """Converts a `None` instance.
+    """Converts a ``None`` instance.
 
-    A `None` is converted to `None`.
+    A ``None`` is converted to ``None``.
     """
 
     def can_convert(self, o: Any) -> bool:
@@ -54,7 +58,7 @@ class FromNone(ToJsonConverter[JsonNull]):
 
 
 class FromSimple(ToJsonConverter[JsonSimple]):
-    """Converts simple objects of type `int`, `float`, `str`, `bool`.
+    """Converts simple objects of type ``int``, ``float``, ``str``, ``bool``.
 
     The conversion simply returns the given object.
     """
@@ -67,10 +71,10 @@ class FromSimple(ToJsonConverter[JsonSimple]):
 
 
 class FromSequence(ToJsonConverter[Sequence[Any]]):
-    """Converts :objects of type class:`typing.Sequence`.
+    """Converts objects of type :class:`typing.Sequence`.
 
-    A `Sequence` is converted to a `list` with all elements being converted with their
-    respective :class:`ToJsonConverter`.
+    A :class:`typing.Sequence` is converted to a :class:`list` with all elements being converted
+    with their respective :class:`ToJsonConverter`.
     """
 
     def can_convert(self, o: Any) -> bool:
@@ -80,21 +84,21 @@ class FromSequence(ToJsonConverter[Sequence[Any]]):
         return [to_json(e) for e in o]
 
 
-class FromMapping(ToJsonConverter[Mapping[Any, Any]]):
-    """Converts :objects of type class:`typing.Mapping`.
+class FromMapping(ToJsonConverter[Mapping[str, Any]]):
+    """Converts objects of type :class:`typing.Mapping`.
 
-    A `Mapping` with `str` types keys is converted to a `dict` with all values being converted
-    with their respective :class:`ToJsonConverter`.
+    A :class:`typing.Mapping` with ``str`` typed keys is converted to a ``dict`` with all values
+    being converted with their respective :class:`ToJsonConverter`.
     """
 
     def can_convert(self, o: Any) -> bool:
         return isinstance(o, Mapping)
 
-    def convert(self, o: Mapping[Any, Any], to_json: Callable[[Any], Json]) -> Json:
-        """Convert the given object of type :class:`typing.Mapping` to an object representing json.
+    def convert(self, o: Mapping[str, Any], to_json: Callable[[Any], Json]) -> Json:
+        """Convert the given object of type :class:`typing.Mapping` to an object representing JSON.
 
         Raises:
-            ValueError: If the :class:`typing.Mapping` contains none-`str` keys.
+            ValueError: If the :class:`typing.Mapping` contains none-``str`` keys.
         """
 
         def ensure_str(k: Any) -> str:

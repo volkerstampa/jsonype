@@ -1,3 +1,4 @@
+from inspect import get_annotations
 from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
@@ -14,6 +15,7 @@ T = TypeVar("T")
 ObjectFactory = Callable[[int, Sequence["ObjectFactory"]], Tuple[T, Type[T]]]
 
 typed_json = TypedJson()
+strict_typed_json = TypedJson(strict=True)
 
 
 class TypedJsonTestCase(TestCase):
@@ -51,6 +53,15 @@ class TypedJsonTestCase(TestCase):
     def test_inhomogeneous_mapping(self):
         self.assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, Mapping[str, Union[int, str]])
 
+    def test_typed_dict_relaxed(self) -> None:
+        class Map(TypedDict):
+            k1: float
+            k2: int
+
+        inp = {"k1": 1., "k2": 2, "un": "used"}
+        expected = {k: v for k, v in inp.items() if k in get_annotations(Map)}
+        self.assert_can_convert_from_to_json_relaxed(inp, expected, Map)
+
     def test_typed_dict(self) -> None:
         class Map(TypedDict):
             k1: float
@@ -65,9 +76,17 @@ class TypedJsonTestCase(TestCase):
     def assert_can_convert_from_to_json(self, obj: Any, ty: Type[T]):
         try:
             self.assertEqual(
-                obj, typed_json.from_json(typed_json.to_json(obj), ty))
+                obj, strict_typed_json.from_json(typed_json.to_json(obj), ty))
         except AssertionError:
             print(f"Cannot convert {obj} to {ty}")
+            raise
+
+    def assert_can_convert_from_to_json_relaxed(self, inp: Any, expected: Any, ty: Type[T]):
+        try:
+            self.assertEqual(
+                expected, typed_json.from_json(typed_json.to_json(inp), ty))
+        except AssertionError:
+            print(f"Cannot convert {inp} to {ty}")
             raise
 
     def _random_typed_object(self, size: int,

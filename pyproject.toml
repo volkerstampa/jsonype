@@ -12,10 +12,10 @@ linters = "eradicate,mccabe,mypy,pycodestyle,pydocstyle,pyflakes,pylint,radon,vu
 skip = "docs/*"
 
 [tool.pylama.linter.pydocstyle]
-ignore = "D100,D101,D102,D103,D104,D107"
+ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
 
 [tool.pydocstyle]
-ignore = "D100,D101,D102,D103,D104,D107"
+ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
 
 [tool.mypy]
 cache_dir = "build/.mypy_cache"

@@ -6,13 +6,13 @@ pycodestyle = "*"
 pyflakes = "*"
 mccabe ="*"
 radon="*"
-pydocstyle = {extras = ["toml"], version = "*"}
+# pydocstyle>=6.2 breaks lama: https://github.com/klen/pylama/issues/232
+pydocstyle = "==6.1.1"
 pylint = "*"
 toml = "*"
 pylama = "*"
 vulture = "*"
 eradicate = "*"
-
 
 [requires]
 python_version = "3.11"

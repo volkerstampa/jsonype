@@ -1,19 +1,16 @@
 # jsont
 
-TODO: - add scripts for checking (mypy, tests, other linters)
-Check pylama https://github.com/klen/pylama
-or https://realpython.com/python-code-quality/
+## Development
 
-## development
-
-### prerequisites
+### Prerequisites
 
 - python 3.11:
   Can be installed with [pyenv](https://github.com/pyenv/pyenv):
     - pyenv install $(pyenv install -l | grep "^\s*3.11" | tail -1)
 - [pipenv](https://pipenv.pypa.io/en/latest/)
+- [make](https://www.gnu.org/software/make/) for building documentation
 
-### setup virtual env
+### Setup virtual env
 
 ```bash
 # in project root execute
@@ -25,17 +22,36 @@ All commands below assume that they are execute in a corresponding
 virtual environment (e.g. in a shell started by `pipenv shell`) and the
 current directory is set to the project's root folder.
 
-### run tests
+### Run tests
 
 ```bash
-pytest
+./test.sh
 ```
 
-### run checks
+### Run checks
 
 ```bash
-mypy
+pylama
 ```
 
-### build package
+### Build package
+
+### Documentation
+
+#### Build
+
+```bash
+cd docs
+make
+```
+
+#### Add new modules/packages
+
+```bash
+cd docs
+sphinx-apidoc -o source ../jsont/
+```
+
+
+
 

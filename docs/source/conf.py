@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.abspath("../../"))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'jsont'
+# noinspection PyShadowingBuiltins
 copyright = '2023, Volker Stampa'
 author = 'Volker Stampa'
 release = '0.0.1'
@@ -29,7 +30,6 @@ extensions = [
 intersphinx_mapping = {'python': ('https://docs.python.org/', None)}
 templates_path = ['_templates']
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------

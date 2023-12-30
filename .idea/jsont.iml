@@ -6,6 +6,9 @@
       <excludeFolder url="file://$MODULE_DIR$/docs/build" />
       <excludeFolder url="file://$MODULE_DIR$/build" />
       <excludeFolder url="file://$MODULE_DIR$/dist" />
+      <excludePattern pattern="make.bat" />
+      <excludePattern pattern="Makefile" />
+      <excludePattern pattern="Pipfile.lock" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

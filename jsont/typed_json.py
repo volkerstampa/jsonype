@@ -1,10 +1,12 @@
 from inspect import get_annotations
-from typing import Any, Mapping, Sequence, Type, TypeVar, get_origin
+from typing import Any, Mapping, Sequence, Type, TypeVar, cast, get_origin
 
 from jsont.base_types import Json, JsonNull, JsonSimple
-from jsont.basic_from_json_converters import (ToAny, ToLiteral, ToMapping, ToNone, ToSequence,
-                                              ToSimple, ToTuple, ToTypedMapping, ToUnion)
-from jsont.basic_to_json_converters import FromMapping, FromNone, FromSequence, FromSimple
+from jsont.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
+                                              ToMapping, ToNone, ToSimple, ToTuple, ToTypedMapping,
+                                              ToUnion)
+from jsont.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
+                                            ToJsonConverter)
 
 T = TypeVar("T")
 
@@ -31,18 +33,18 @@ class TypedJson:
     """
 
     def __init__(self, strict: bool = False):
-        self._from_json_converters = (
+        self._from_json_converters: tuple[FromJsonConverter[Any, Any], ...] = (
             ToAny(),
             ToUnion(),
             ToLiteral(),
             ToNone(),
             ToSimple(),
             ToTuple(),
-            ToSequence(),
+            ToList(),
             ToMapping(),
             ToTypedMapping(strict),
         )
-        self._to_json_converters = (
+        self._to_json_converters: tuple[ToJsonConverter[Any], ...] = (
             FromNone(),
             FromSimple(),
             FromSequence(),
@@ -87,7 +89,8 @@ class TypedJson:
         if not converter:
             raise ValueError(f"{cl}{f' ({origin_of_generic})' if origin_of_generic else ''} "
                              "as target type not supported")
-        return converter.convert(js, cl, annotations, self.from_json)
+        # converter can_convert from Type[T] so it should return T
+        return cast(T, converter.convert(js, cl, annotations, self.from_json))
 
     @staticmethod
     def _simple_to_json(js: JsonSimple) -> Json:

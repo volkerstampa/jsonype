@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from inspect import isclass
 from types import NoneType
-from typing import (Any, Callable, Generic, Iterable, List, Literal, Mapping, Sequence, Type,
-                    TypeVar, Union, cast, get_args)
+from typing import (Any, Callable, Generic, Iterable, List, Literal, Mapping, Optional, Protocol,
+                    Sequence, Type, TypeVar, Union, cast, get_args, runtime_checkable)
 
 from jsont.base_types import Json, JsonSimple
 
@@ -11,7 +11,7 @@ S = TypeVar("S")
 R = TypeVar("R")
 
 
-class FromJsonConverter(ABC, Generic[T]):
+class FromJsonConverter(ABC, Generic[T, S]):
     """The base-class for converters that convert from objects representing json.
 
     Converters that convert from objects representing json to their specific python object have to
@@ -19,7 +19,7 @@ class FromJsonConverter(ABC, Generic[T]):
     """
 
     @abstractmethod
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         """Return if this converts from an object representing json into the given `target_type`.
 
         Args:
@@ -54,24 +54,24 @@ class FromJsonConverter(ABC, Generic[T]):
         """
 
 
-class ToAny(FromJsonConverter[Any]):
+class ToAny(FromJsonConverter[Any, None]):
     """Convert to the target type :class:`typing.Any`.
 
     This converter returns the object representing json unchanged.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
-        return target_type is Any
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
+        return target_type is Any or target_type is object
 
     def convert(self,
                 js: Json,
                 target_type: Type[Any],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> Any:
-        return cast(Any, js)
+                from_json: Callable[[Json, Type[None]], None]) -> Any:
+        return js
 
 
-class ToUnion(FromJsonConverter[T]):
+class ToUnion(FromJsonConverter[T, T]):
     """Convert to one of the type-parameters of the given :class:`typing.Union`.
 
     It tries to convert the object representing json to one of the type-parameters
@@ -84,30 +84,33 @@ class ToUnion(FromJsonConverter[T]):
     a ``list``.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
-        return origin_of_generic is Union
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
+        # Union is a type-special-form and thus cannot be compares to a type
+        return origin_of_generic is cast(type, Union)
 
     def convert(self,
                 js: Json,
                 target_type: Type[T],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[T]], T]) -> T:
         union_types = get_args(target_type)
         # a str is also a Sequence of str so check str first to avoid that
         # it gets converted to a Sequence of str
         union_types_with_str_first = (([str] if str in union_types else [])
                                       + [ty for ty in union_types if ty is not str])
-        res_or_failures = _first_success(from_json,
-                                         ((js, ty) for ty in union_types_with_str_first))
+        args: Iterable[tuple[Json, type[Json]]] = ((js, ty) for ty in union_types_with_str_first)
+        res_or_failures = _first_success(from_json, args)
         if res_or_failures \
                 and isinstance(res_or_failures, list) \
                 and all(isinstance(e, ValueError) for e in res_or_failures):
             raise ValueError(f"Cannot convert {js} to any of {union_types_with_str_first}: "
                              f"{list(zip(union_types_with_str_first, res_or_failures))}")
+        # here we know that one conversion was successful. As we only convert into the
+        # type-parameters of the Union the returned result must be of the Union-type
         return cast(T, res_or_failures)
 
 
-class ToLiteral(FromJsonConverter[T]):
+class ToLiteral(FromJsonConverter[T, None]):
     """Convert to one of the listet literals.
 
     Returns the json-representation unchanged if it equals one of the literals, otherwise
@@ -117,56 +120,58 @@ class ToLiteral(FromJsonConverter[T]):
     for example a ``5`` or a ``6``, but not a ``7``.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
-        return origin_of_generic is Literal
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
+        # Literal is a type-special-form and thus cannot be compared to a type
+        return origin_of_generic is cast(type, Literal)
 
     def convert(self,
                 js: Json,
                 target_type: Type[T],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[None]], None]) -> T:
         literals = get_args(target_type)
         if js in literals:
+            # as js is one of the literals it must be of the Literal[literals]-type
             return cast(T, js)
         raise ValueError(f"Cannot convert {js} to any of {literals}")
 
 
-class ToNone(FromJsonConverter[None]):
+class ToNone(FromJsonConverter[None, None]):
     """Return the json-representation, if it is ``None``.
 
     If the given json-representation is not ``None`` it raises an :exc:`ValueError`.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return target_type is NoneType or target_type is None
 
     def convert(self,
                 js: Json,
                 target_type: Type[Any],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> None:
+                from_json: Callable[[Json, Type[None]], None]) -> None:
         if js is None:
             return None
         raise ValueError(f"Cannot convert {js} to None")
 
 
-class ToSimple(FromJsonConverter[T]):
+class ToSimple(FromJsonConverter[T, None]):
     """Return the json-representation, if it is one of the types ``int, float, str, bool``."""
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return isclass(target_type) and issubclass(target_type, get_args(JsonSimple))
 
     def convert(self,
                 js: Json,
                 target_type: Type[T],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[None]], None]) -> T:
         if isinstance(js, target_type):
             return js
         raise ValueError(f"Cannot convert {js} to {target_type}")
 
 
-class ToTuple(FromJsonConverter[T]):
+class ToTuple(FromJsonConverter[tuple[Any, ...], Any]):
     """Convert an array to a :class:`tuple`.
 
     Convert the elements of the array in the corresponding target type given by the type-parameter
@@ -179,17 +184,17 @@ class ToTuple(FromJsonConverter[T]):
     if the json-representation to be converted is a :class:`typing.Sequence` of 5 elements.
 
     A target type like ``tuple[int, str]`` can convert for example the list ``[5, "Hello World!"]``
-    into the tuple ``(5, "Hello World!")``, but not ``["Hello World!" 5]``
+    into the tuple ``(5, "Hello World!")``, but not ``["Hello World!", 5]``
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return isclass(origin_of_generic) and issubclass(origin_of_generic, tuple)
 
     def convert(self,
                 js: Json,
-                target_type: Type[T],
+                target_type: Type[tuple[Any, ...]],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[Any]], Any]) -> tuple[Any, ...]:
         element_types: Sequence[Any] = get_args(target_type)
         if element_types.count(...) > 1:
             raise ValueError(f"Cannot convert {js} to {target_type} "
@@ -200,11 +205,11 @@ class ToTuple(FromJsonConverter[T]):
                 raise ValueError(
                     f"Cannot convert {js} to {target_type} "
                     "as number of type parameter do not match")
-            return cast(T, tuple(from_json(e, ty) for e, ty in zip(js, element_types)))
+            return tuple(from_json(e, ty) for e, ty in zip(js, element_types))
         raise ValueError(f"Cannot convert {js} to {target_type} as types are not convertible")
 
 
-class ToSequence(FromJsonConverter[T]):
+class ToList(FromJsonConverter[Sequence[T], T], Generic[T]):
     """Convert an array to a :class:`typing.Sequence`.
 
     Convert all elements of the array into the corresponding target type given by the type-parameter
@@ -214,22 +219,22 @@ class ToSequence(FromJsonConverter[T]):
     but not a ``list`` of ``str``.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Sequence)
 
     def convert(self,
                 js: Json,
-                target_type: Type[T],
+                target_type: Type[Sequence[T]],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[T]], T]) -> Sequence[T]:
         element_types = get_args(target_type) or (Any,)
         assert len(element_types) == 1
         if isinstance(js, Sequence):
-            return cast(T, [from_json(e, element_types[0]) for e in js])
+            return [from_json(e, element_types[0]) for e in js]
         raise ValueError(f"Cannot convert {js} to {target_type}")
 
 
-class ToMapping(FromJsonConverter[T]):
+class ToMapping(FromJsonConverter[Mapping[str, T], T]):
     """Convert the json-representation to a :class:`typing.Mapping`.
 
     Convert all entries of the given ``Mapping`` (respectively json-object) into entries of a
@@ -238,24 +243,29 @@ class ToMapping(FromJsonConverter[T]):
     A target type of ``Mapping[str, int]`` can convert for example ``{ "key1": 1, "key2": 2 }``.
     """
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Mapping)
 
     def convert(self,
                 js: Json,
-                target_type: Type[T],
+                target_type: Type[Mapping[str, T]],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
+                from_json: Callable[[Json, Type[T]], T]) -> Mapping[str, T]:
         key_value_types = get_args(target_type) or (str, Any)
         key_type, value_type = key_value_types
         if key_type is not str:
             raise ValueError(f"Cannot convert {js} to mapping with key-type: {key_type}")
         if isinstance(js, Mapping):
-            return cast(T, {k: from_json(v, value_type) for k, v in js.items()})
+            return {k: from_json(v, value_type) for k, v in js.items()}
         raise ValueError(f"Cannot convert {js} to {target_type}")
 
 
-class ToTypedMapping(FromJsonConverter[T]):
+@runtime_checkable
+class HasRequiredKeys(Protocol):  # pylint: disable=too-few-public-methods
+    __required_keys__: frozenset[str]
+
+
+class ToTypedMapping(FromJsonConverter[Mapping[str, T], T]):
     """Convert the json-representation to a :class:`typing.TypedDict`.
 
     Convert all entries of the given ``Mepping`` (respectively json-object) into entries of a
@@ -285,34 +295,35 @@ class ToTypedMapping(FromJsonConverter[T]):
         """
         self.strict = strict
 
-    def can_convert(self, target_type: type, origin_of_generic: type) -> bool:
+    def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
         return isclass(target_type) and issubclass(target_type, Mapping)
 
     def convert(self,
                 js: Json,
-                target_type: Type[T],
-                annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[S]], S]) -> T:
-        def type_for_key(k: str) -> Type[S]:
+                target_type: Type[Mapping[str, T]],
+                annotations: Mapping[str, type[T]],
+                from_json: Callable[[Json, Type[T]], T]) -> Mapping[str, T]:
+        def type_for_key(k: str) -> Type[T]:
             t = annotations.get(k)
             if t:
-                return cast(Type[S], t)
+                return t
             raise ValueError(f"Cannot convert {js} to {target_type} as it contains unknown key {k}")
 
-        if isinstance(js, Mapping) and hasattr(target_type, "__required_keys__"):
-            if target_type.__required_keys__.issubset(frozenset(js.keys())):  # type: ignore
+        if isinstance(js, Mapping) and isinstance(target_type, HasRequiredKeys):
+            if target_type.__required_keys__.issubset(frozenset(js.keys())):
                 items = js.items() if self.strict \
                     else [(k, v) for k, v in js.items() if k in annotations]
-                return cast(T, {k: from_json(v, type_for_key(k)) for k, v in items})
+                return {k: from_json(v, type_for_key(k)) for k, v in items}
             raise ValueError(
                 f"Cannot convert {js} to {target_type} "
                 "as it does not contain all required keys "
-                f"{target_type.__required_keys__}"  # type: ignore
+                f"{target_type.__required_keys__}"
             )
         raise ValueError(f"Cannot convert {js} to {target_type}")
 
 
-def _first_success(f: Callable[..., R], i: Iterable[tuple]) -> Union[R, Sequence[ValueError]]:
+def _first_success(f: Callable[..., R], i: Iterable[tuple[T, ...]]) \
+        -> Union[R, Sequence[ValueError]]:
     failures: List[ValueError] = []
     for args in i:
         try:
@@ -324,7 +335,7 @@ def _first_success(f: Callable[..., R], i: Iterable[tuple]) -> Union[R, Sequence
 
 def _replace_ellipsis(element_types: Sequence[Any], expected_len: int) -> Sequence[Any]:
     if ... in element_types:
-        element_types = _fill_ellipsis(element_types, expected_len, Any)  # type: ignore
+        element_types = _fill_ellipsis(element_types, expected_len, object)
     return element_types
 
 

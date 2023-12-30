@@ -4,7 +4,7 @@ from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
 from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, Type,
-                    TypedDict, TypeVar, Union, cast)
+                    TypeAlias, TypedDict, TypeVar, Union, cast)
 from unittest import TestCase, main
 
 from jsont.typed_json import TypedJson
@@ -12,7 +12,7 @@ from jsont.typed_json import TypedJson
 T = TypeVar("T")
 
 
-ObjectFactory = Callable[[int, Sequence["ObjectFactory"]], Tuple[T, Type[T]]]
+ObjectFactory: TypeAlias = Callable[[int, Sequence["ObjectFactory[T]"]], Tuple[T, Type[T]]]
 
 typed_json = TypedJson()
 strict_typed_json = TypedJson(strict=True)
@@ -20,15 +20,20 @@ strict_typed_json = TypedJson(strict=True)
 
 class TypedJsonTestCase(TestCase):
 
-    def test_simple(self):
+    def test_simple(self) -> None:
         for simple_obj in [0, -1, 2, 0., 1., -2., True, False, "Hello", "", None]:
             self.assert_can_convert_from_to_json(simple_obj, type(simple_obj))
 
-    def test_simple_with_union_type(self):
+    def test_simple_with_union_type(self) -> None:
         for i in [0, "Hello", None]:
-            self.assert_can_convert_from_to_json(i, Optional[Union[int, str]])
+            # Union is a type-special-form so cast to type explicitly
+            self.assert_can_convert_from_to_json(
+                i, cast(type[Optional[Union[int, str]]], Optional[Union[int, str]]))
 
-    def test_homogeneous_sequence(self):
+    def test_homogeneous_list(self) -> None:
+        # just for defining ty as TypeAlias
+        # noinspection PyTypeHints,PyUnusedLocal
+        ty: TypeAlias = Any
         for li, ty in [
             ([0, -1, 2], int),
             ([0., 1., -2.], float),
@@ -36,22 +41,32 @@ class TypedJsonTestCase(TestCase):
             (["Hello", ""], str),
             ([None], NoneType)
         ]:
-            self.assert_can_convert_from_to_json(li, Sequence[ty])
+            self.assert_can_convert_from_to_json(li, list[ty])
 
-    def test_inhomogeneous_sequence(self):
+    def test_inhomogeneous_list(self) -> None:
         self.assert_can_convert_from_to_json([1, 0., True, None, "Hello"],
-                                             Sequence[Union[int, float, bool, None, str]])
+                                             list[Union[int, float, bool, None, str]])
 
-    def test_homogeneous_mapping(self):
+    def test_inhomogeneous_tuple(self) -> None:
+        self.assert_can_convert_from_to_json((1, 0., True, None, "Hello"),
+                                             tuple[int, float, bool, None, str])
+
+    def test_empty_tuple(self) -> None:
+        self.assert_can_convert_from_to_json((), tuple[()])
+
+    def test_homogeneous_mapping(self) -> None:
+        # just for defining ty as TypeAlias
+        # noinspection PyTypeHints,PyUnusedLocal
+        ty: TypeAlias = Any
         for m, ty in [
             ({"k1": 1}, int),
             ({"k1": True, "k2": False}, bool),
             ({"k1": None}, NoneType)
         ]:
-            self.assert_can_convert_from_to_json(m, Mapping[str, ty])
+            self.assert_can_convert_from_to_json(m, dict[str, ty])
 
-    def test_inhomogeneous_mapping(self):
-        self.assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, Mapping[str, Union[int, str]])
+    def test_inhomogeneous_mapping(self) -> None:
+        self.assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, dict[str, Union[int, str]])
 
     def test_typed_dict_relaxed(self) -> None:
         class Map(TypedDict):
@@ -69,11 +84,11 @@ class TypedJsonTestCase(TestCase):
 
         self.assert_can_convert_from_to_json({"k1": 1., "k2": 2}, Map)
 
-    def test_random_objects(self):
+    def test_random_objects(self) -> None:
         for _ in range(500):
             self.assert_can_convert_from_to_json(*(self._random_typed_object(8)))
 
-    def assert_can_convert_from_to_json(self, obj: Any, ty: Type[T]):
+    def assert_can_convert_from_to_json(self, obj: Any, ty: Type[T]) -> None:
         try:
             self.assertEqual(
                 obj, strict_typed_json.from_json(typed_json.to_json(obj), ty))
@@ -81,7 +96,7 @@ class TypedJsonTestCase(TestCase):
             print(f"Cannot convert {obj} to {ty}")
             raise
 
-    def assert_can_convert_from_to_json_relaxed(self, inp: Any, expected: Any, ty: Type[T]):
+    def assert_can_convert_from_to_json_relaxed(self, inp: Any, expected: Any, ty: Type[T]) -> None:
         try:
             self.assertEqual(
                 expected, typed_json.from_json(typed_json.to_json(inp), ty))
@@ -90,18 +105,18 @@ class TypedJsonTestCase(TestCase):
             raise
 
     def _random_typed_object(self, size: int,
-                             factories: Optional[Sequence[ObjectFactory]] = None) \
+                             factories: Optional[Sequence[ObjectFactory[T]]] = None) \
             -> Tuple[T, Type[T]]:
         factories = factories or self._all_types_factories()
         return choice(factories)(size, factories)
 
-    def _ambiguous_types_factories(self) -> Sequence[ObjectFactory]:
+    def _ambiguous_types_factories(self) -> Sequence[ObjectFactory[Any]]:
         return (self._random_tuple,
                 self._random_tuple_with_ellipsis,
-                self._random_untyped_sequence,
+                self._random_untyped_list,
                 self._random_untyped_map)
 
-    def _unambiguous_types_factories(self) -> Sequence[ObjectFactory]:
+    def _unambiguous_types_factories(self) -> Sequence[ObjectFactory[Any]]:
         return (self._random_int,
                 self._random_float,
                 self._random_bool,
@@ -111,15 +126,16 @@ class TypedJsonTestCase(TestCase):
                 self._random_map,
                 self._random_typed_map)
 
-    def _all_types_factories(self) -> Sequence[ObjectFactory]:
+    def _all_types_factories(self) -> Sequence[ObjectFactory[Any]]:
         return tuple(self._ambiguous_types_factories()) + tuple(self._unambiguous_types_factories())
 
     @staticmethod
-    def _random_int(_size: int, _factories: Sequence[ObjectFactory]) -> Tuple[int, Type[int]]:
+    def _random_int(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> Tuple[int, Type[int]]:
         return randint(-2 ** 63, 2 ** 63 - 1), int
 
     @staticmethod
-    def _random_float(_size: int, _factories: Sequence[ObjectFactory]) -> Tuple[float, Type[float]]:
+    def _random_float(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
+            -> Tuple[float, Type[float]]:
         f = choices([-float_info.max,
                      uniform(-float_info.max, 0),
                      gauss(0, 10),
@@ -129,94 +145,112 @@ class TypedJsonTestCase(TestCase):
         return f[0], float
 
     @staticmethod
-    def _random_bool(_size: int, _factories: Sequence[ObjectFactory]) -> Tuple[bool, Type[bool]]:
+    def _random_bool(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
+            -> Tuple[bool, Type[bool]]:
         return bool(randint(0, 1)), bool
 
     @staticmethod
-    def _none(_size: int, _factories: Sequence[ObjectFactory]) -> Tuple[None, Any]:
+    def _none(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> Tuple[None, Any]:
         return None, Any
 
     @staticmethod
-    def _random_str(size: int, _factories: Sequence[ObjectFactory]) -> Tuple[str, Type[str]]:
+    def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> Tuple[str, Type[str]]:
         return ''.join(choices(printable, k=randrange(size))), str
 
-    def _random_sequence(self, size: int, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Sequence[T], Type[Sequence[T]]]:
+    def _random_sequence(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> tuple[Sequence[T], type[Sequence[T]]]:
         seq, types = self._random_values(size, factories)
-        return list(seq), Sequence[Union[*types]]  # type: ignore
+        # Union[*types] is not a valid type so cast to a type
+        # TypeAliases shall be top-level, but otherwise element_type is not a valid type
+        # noinspection PyTypeHints
+        element_type: TypeAlias = cast(type, Union[*types] if seq else Any)
+        return list(seq), Sequence[element_type]
 
-    def _random_untyped_sequence(self, size: int, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Sequence[T], Type[Sequence]]:
+    def _random_untyped_list(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> Tuple[Sequence[T], Type[list[Any]]]:
         unambiguous_factories = tuple(
             frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
         seq, _types = self._random_values(size, unambiguous_factories)
-        return list(seq), Sequence
+        return list(seq), List
 
-    def _random_tuple(self, size, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Tuple[Any, ...], Type[Tuple[Any, ...]]]:
+    def _random_tuple(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> tuple[tuple[T, ...], Type[tuple[T, ...]]]:
         seq, types = self._random_values(size, factories)
-        return tuple(seq), cast(Type[Tuple[Any, ...]], Tuple[*types] if seq else Tuple[()])
+        # Tuple[*var] it interpreted as object, so it needs a cast
+        return tuple(seq), cast(type[tuple[T, ...]], Tuple[*types])
 
-    def _random_tuple_with_ellipsis(self, size, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Tuple[Any, ...], Type[Tuple[Any, ...]]]:
+    def _random_tuple_with_ellipsis(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> Tuple[Tuple[T, ...], Type[Tuple[T, ...]]]:
         unambiguous_factories = tuple(
             frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
         seq, types = self._random_values(size, unambiguous_factories)
-        return tuple(seq), cast(Type[Tuple[Any, ...]],
-                                Tuple[*insert_random_ellipsis(types)] if seq else Tuple[()])
+        # Tuple[*var] it interpreted as object, so it needs a cast
+        return tuple(seq), cast(Type[Tuple[T, ...]],
+                                Tuple[*insert_random_ellipsis(types)])
 
-    def _random_map(self, size: int, factories: Sequence[ObjectFactory]) \
+    def _random_map(self, size: int, factories: Sequence[ObjectFactory[T]]) \
             -> Tuple[Mapping[str, T], Type[Mapping[str, T]]]:
         vals, types = self._random_values(size, factories)
+        # Union[*types] is not a valid type so cast to a type
+        # TypeAliases shall be top-level, but otherwise element_type is not a valid type
+        # noinspection PyTypeHints
+        value_types: TypeAlias = cast(type, Union[*types] if vals else Any)
         return ({self._random_str(size, factories)[0]: val for val in vals},
-                cast(Type[Mapping[str, T]], Mapping[str, Union[*types]]))  # type: ignore
+                Mapping[str, value_types])
 
-    def _random_untyped_map(self, size: int, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Mapping[str, T], Type[Mapping]]:
+    def _random_untyped_map(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> Tuple[Mapping[str, T], Type[Mapping[str, Any]]]:
         unambiguous_factories = tuple(
             frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
         vals, _types = self._random_values(size, unambiguous_factories)
         return {self._random_str(size, factories)[0]: val for val in vals}, Mapping
 
-    def _random_typed_map(self, size: int, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Mapping, Type[Mapping]]:
+    def _random_typed_map(self, size: int, factories: Sequence[ObjectFactory[Any]]) \
+            -> Tuple[Mapping[str, Any], Type[Mapping[str, Any]]]:
         vals, types = self._random_values(size, factories)
         keys = [self._random_symbol() for _ in vals]
-        # noinspection PyPep8Naming
-        MapType = TypedDict(self._random_symbol(), dict(zip(keys, types)))  # type: ignore
-        return MapType(**dict(zip(keys, vals))), MapType  # type: ignore
+        # https://github.com/python/mypy/issues/7178
+        map_type = TypedDict(self._random_symbol(), dict(zip(keys, types)))  # type: ignore
+        # the types of vals are in types, and they are zipped in the same way with
+        # the keys as the vals are zipped here so this should actually be safe.
+        return map_type(**dict(zip(keys, vals))), map_type  # type: ignore
 
     @staticmethod
     def _random_symbol() -> str:
         return ''.join(choices(ascii_letters + digits, k=10))
 
-    def _random_values(self, size, factories: Sequence[ObjectFactory]) \
-            -> Tuple[Sequence[Any], Sequence[Type[Any]]]:
-        previous_types: List[type] = []
+    def _random_values(self, size: int, factories: Sequence[ObjectFactory[T]]) \
+            -> Tuple[Sequence[T], Sequence[type[T]]]:
+        previous_types: List[type[T]] = []
 
-        def add_to_previous(val: Any, ty: Type[Any]) -> Tuple[Any, Type[Any]]:
+        def add_to_previous(val: Any, ty: Type[T]) -> Tuple[T, Type[T]]:
             previous_types.append(ty)
             return val, ty
 
-        def cannot_convert(val: Any, ty: type) -> bool:
+        def cannot_convert(val: T, ty: type[T]) -> bool:
             try:
-                typed_json.from_json(typed_json.to_json(val), ty)  # type: ignore
+                typed_json.from_json(typed_json.to_json(val), ty)
                 return False
             except ValueError:
                 return True
 
-        def cannot_convert_to_previous_type(val: Any) -> bool:
+        def cannot_convert_to_previous_type(val: T) -> bool:
             return all(cannot_convert(val, ty) for ty in previous_types)
 
-        values_with_types: Iterable[Tuple[Any, Type[Any]]] = \
+        values_with_types: Iterable[tuple[T, type[T]]] = \
             (self._random_typed_object(size // 2, factories) for _ in range(randrange(size)))
-        value_and_types = cast(Tuple[Sequence[Any], Sequence[Type[Any]]], tuple(
-            zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
+        # zip is an Iterable which has only a single type-parameter (i.e. must be homogeneous)
+        # but when some (Any, type) tuples are zipped we do get a ([Any], [type])
+        value_and_types = cast(
+            Tuple[Sequence[T], Sequence[type[T]]],
+            tuple(zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
                   cannot_convert_to_previous_type(val)))))
-        return value_and_types or ((), (Any,))
+        return value_and_types or ((), ())
 
 
-def insert_random_ellipsis(types: Sequence[type]) -> Sequence[Any]:
+def insert_random_ellipsis(types: Sequence[type]) -> Sequence[type]:
+    if not types:
+        return ()
     ellipsis_start = randint(0, len(types) - 1)
     ellipsis_end = randint(ellipsis_start + 1, len(types))
     types_with_ellipsis: List[Any] = list(types)

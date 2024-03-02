@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from inspect import isclass
 from types import NoneType
-from typing import (Any, Callable, Generic, Iterable, List, Literal, Mapping, Optional, Protocol,
-                    Sequence, Type, TypeVar, Union, cast, get_args, runtime_checkable)
+from typing import (Any, Callable, Generic, Iterable, Literal, Mapping, Optional, Protocol,
+                    Sequence, TypeVar, Union, cast, get_args, runtime_checkable)
 
 from jsont.base_types import Json, JsonSimple
 
@@ -42,9 +42,9 @@ class FromJsonConverter(ABC, Generic[TargetType, ContainedTargetType]):
     def convert(
             self,
             js: Json,
-            target_type: Type[TargetType],
+            target_type: type[TargetType],
             annotations: Mapping[str, type],
-            from_json: Callable[[Json, Type[ContainedTargetType]], ContainedTargetType]
+            from_json: Callable[[Json, type[ContainedTargetType]], ContainedTargetType]
     ) -> TargetType:
         """Convert the given object representing JSON to the given target type.
 
@@ -75,9 +75,9 @@ class ToAny(FromJsonConverter[Any, None]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[Any],
+                target_type: type[Any],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[None]], None]) -> Any:
+                from_json: Callable[[Json, type[None]], None]) -> Any:
         return js
 
 
@@ -100,9 +100,9 @@ class ToUnion(FromJsonConverter[TargetType, TargetType]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[TargetType],
+                target_type: type[TargetType],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[TargetType]], TargetType]) -> TargetType:
+                from_json: Callable[[Json, type[TargetType]], TargetType]) -> TargetType:
         union_types = get_args(target_type)
         # a str is also a Sequence of str so check str first to avoid that
         # it gets converted to a Sequence of str
@@ -136,9 +136,9 @@ class ToLiteral(FromJsonConverter[TargetType, None]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[TargetType],
+                target_type: type[TargetType],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[None]], None]) -> TargetType:
+                from_json: Callable[[Json, type[None]], None]) -> TargetType:
         literals = get_args(target_type)
         if js in literals:
             # as js is one of the literals it must be of the Literal[literals]-type
@@ -157,9 +157,9 @@ class ToNone(FromJsonConverter[None, None]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[Any],
+                target_type: type[Any],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[None]], None]) -> None:
+                from_json: Callable[[Json, type[None]], None]) -> None:
         if js is None:
             return None
         raise ValueError(f"Cannot convert {js} to None")
@@ -173,9 +173,9 @@ class ToSimple(FromJsonConverter[TargetType, None]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[TargetType],
+                target_type: type[TargetType],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[None]], None]) -> TargetType:
+                from_json: Callable[[Json, type[None]], None]) -> TargetType:
         if isinstance(js, target_type):
             return js
         raise ValueError(f"Cannot convert {js} to {target_type}")
@@ -202,9 +202,9 @@ class ToTuple(FromJsonConverter[tuple[Any, ...], Any]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[tuple[Any, ...]],
+                target_type: type[tuple[Any, ...]],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[Any]], Any]) -> tuple[Any, ...]:
+                from_json: Callable[[Json, type[Any]], Any]) -> tuple[Any, ...]:
         element_types: Sequence[Any] = get_args(target_type)
         if element_types.count(...) > 1:
             raise ValueError(f"Cannot convert {js} to {target_type} "
@@ -234,9 +234,9 @@ class ToList(FromJsonConverter[Sequence[TargetType], TargetType]):
 
     def convert(self,
                 js: Json,
-                target_type: Type[Sequence[TargetType]],
+                target_type: type[Sequence[TargetType]],
                 annotations: Mapping[str, type],
-                from_json: Callable[[Json, Type[TargetType]], TargetType]) -> Sequence[TargetType]:
+                from_json: Callable[[Json, type[TargetType]], TargetType]) -> Sequence[TargetType]:
         element_types = get_args(target_type) or (Any,)
         assert len(element_types) == 1
         if isinstance(js, Sequence):
@@ -259,9 +259,9 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
     def convert(
             self,
             js: Json,
-            target_type: Type[Mapping[str, TargetType]],
+            target_type: type[Mapping[str, TargetType]],
             annotations: Mapping[str, type],
-            from_json: Callable[[Json, Type[TargetType]], TargetType]
+            from_json: Callable[[Json, type[TargetType]], TargetType]
     ) -> Mapping[str, TargetType]:
         key_value_types = get_args(target_type) or (str, Any)
         key_type, value_type = key_value_types
@@ -311,11 +311,11 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
     def convert(
             self,
             js: Json,
-            target_type: Type[Mapping[str, TargetType]],
+            target_type: type[Mapping[str, TargetType]],
             annotations: Mapping[str, type[TargetType]],
-            from_json: Callable[[Json, Type[TargetType]], TargetType]
+            from_json: Callable[[Json, type[TargetType]], TargetType]
     ) -> Mapping[str, TargetType]:
-        def type_for_key(k: str) -> Type[TargetType]:
+        def type_for_key(k: str) -> type[TargetType]:
             t = annotations.get(k)
             if t:
                 return t
@@ -336,7 +336,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
 
 def _first_success(f: Callable[..., ContainedTargetType], i: Iterable[tuple[TargetType, ...]]) \
         -> Union[ContainedTargetType, Sequence[ValueError]]:
-    failures: List[ValueError] = []
+    failures: list[ValueError] = []
     for args in i:
         try:
             return f(*args)
@@ -351,8 +351,8 @@ def _replace_ellipsis(element_types: Sequence[Any], expected_len: int) -> Sequen
     return element_types
 
 
-def _fill_ellipsis(types: Sequence[Any], expected_len: int, fill_type: Type[TargetType]) \
-        -> Sequence[Type[TargetType]]:
+def _fill_ellipsis(types: Sequence[Any], expected_len: int, fill_type: type[TargetType]) \
+        -> Sequence[type[TargetType]]:
     types = list(types)
     ellipsis_idx = types.index(...)
     types[ellipsis_idx:ellipsis_idx + 1] = [fill_type] * (expected_len - len(types) + 1)

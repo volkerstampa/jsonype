@@ -1,5 +1,5 @@
 from inspect import get_annotations
-from typing import Any, Mapping, Sequence, Type, TypeVar, cast, get_origin
+from typing import Any, Mapping, Sequence, TypeVar, cast, get_origin
 
 from jsont.base_types import Json, JsonNull, JsonSimple
 from jsont.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
@@ -104,7 +104,7 @@ class TypedJson:
             raise ValueError(f"{o} of type {type(o)} cannot be converted to Json")
         return converter.convert(o, self.to_json)
 
-    def from_json(self, js: Json, target_type: Type[TargetType]) -> TargetType:
+    def from_json(self, js: Json, target_type: type[TargetType]) -> TargetType:
         """Convert the given JSON-representation to an object of the given type.
 
         The JSON-representation is typically generated from a JSON string by using
@@ -129,7 +129,7 @@ class TypedJson:
                 f"{target_type}{f' ({origin_of_generic})' if origin_of_generic else ''} "
                 "as target type not supported"
             )
-        # converter can_convert from Type[T] so it should return T
+        # converter can_convert from type[T] so it should return T
         return cast(TargetType, converter.convert(js, target_type, annotations, self.from_json))
 
     @staticmethod

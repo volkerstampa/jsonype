@@ -230,7 +230,8 @@ class ToList(FromJsonConverter[Sequence[TargetType], TargetType]):
     """
 
     def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
-        return isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Sequence)
+        return ((isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Sequence))
+                or (isclass(target_type) and issubclass(target_type, Sequence)))
 
     def convert(self,
                 js: Json,

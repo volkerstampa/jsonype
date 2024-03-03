@@ -3,7 +3,7 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Callable, Iterable, Mapping, Optional, Sequence, Tuple, TypeAlias,
+from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeAlias,
                     TypedDict, TypeVar, Union, cast)
 from unittest import TestCase, main
 
@@ -42,6 +42,10 @@ class TypedJsonTestCase(TestCase):
             ([None], NoneType)
         ]:
             self.assert_can_convert_from_to_json(li, list[ty])
+
+    def test_untyped_list(self) -> None:
+        self.assert_can_convert_from_to_json([1], list)
+        self.assert_can_convert_from_to_json(["Hi"], List)
 
     def test_inhomogeneous_list(self) -> None:
         self.assert_can_convert_from_to_json([1, 0., True, None, "Hello"],
@@ -172,7 +176,7 @@ class TypedJsonTestCase(TestCase):
         unambiguous_factories = tuple(
             frozenset(self._unambiguous_types_factories()).intersection(frozenset(factories)))
         seq, _types = self._random_values(size, unambiguous_factories)
-        return list(seq), list
+        return list(seq), List
 
     def _random_tuple(self, size: int, factories: Sequence[ObjectFactory[_T]]) \
             -> tuple[tuple[_T, ...], type[tuple[_T, ...]]]:

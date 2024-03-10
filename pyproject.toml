@@ -1,11 +1,28 @@
-[build-system]
-requires = ["setuptools", "setuptools_scm"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "jsont"
+version = "0"  # ignored
 description = "A package for converting classes with type hints to/from JSON"
-dynamic = ["version"]
+homepage = "https://github.com/volkerstampa/jsont"
+authors = ["Volker Stampa <Volker.Stampa@gmx.net>"]
+maintainers = ["Volker Stampa <Volker.Stampa@gmx.net>"]
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["json"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries",
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools_scm]
+version_file = "jsont/_version.py"
+local_scheme = "poetry_setuptools_scm_plugin:no_local_scheme"
 
 [tool.pylama]
 linters = "eradicate,mccabe,mypy,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture,isort"
@@ -38,3 +55,23 @@ cc_min = "C"
 [tool.vulture]
 min_confidence = 61
 paths = ["jsont", "tests"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.10.0"
+sphinx = "^7.3.7"
+pycodestyle = "^2.11.1"
+pyflakes = "^3.2.0"
+mccabe ="^0.7.0"
+radon="^6.0.1"
+# pydocstyle>=6.2 breaks lama: https://github.com/klen/pylama/issues/232
+pydocstyle = "~6.1.1"
+pylint = "^3.1.0"
+toml = "^0.10.2"
+pylama = "^8.4.1"
+vulture = "^2.11"
+eradicate = "^2.3.0"
+sphinx-rtd-theme = "^2.0.0"
+setuptools = "^69.5.1"

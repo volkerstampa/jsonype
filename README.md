@@ -4,22 +4,25 @@
 
 ### Prerequisites
 
-- python 3.11:
+- python >= 3.11:
   Can be installed with [pyenv](https://github.com/pyenv/pyenv):
-    - pyenv install $(pyenv install -l | grep "^\s*3.11" | tail -1)
-- [pipenv](https://pipenv.pypa.io/en/latest/)
+  - pyenv install 3.11
+- [Poetry](https://python-poetry.org/) >=1.2
+  On Ubuntu can be installed with `sudo apt install python3-poetry`. See
+  [Poetry's documentation](https://python-poetry.org/docs/#installation)
+  for alternative installation options.
 - [make](https://www.gnu.org/software/make/) for building documentation
 
 ### Setup virtual env
 
 ```bash
-# in project root execute
-pipenv shell
-pipenv install --dev
+poetry self add poetry-setuptools-scm-plugin@latest
+poetry install
+poetry shell
 ```
 
 All commands below assume that they are execute in a corresponding
-virtual environment (e.g. in a shell started by `pipenv shell`) and the
+virtual environment (e.g. in a shell started by `poetry shell`) and the
 current directory is set to the project's root folder.
 
 ### Run tests
@@ -36,6 +39,16 @@ pylama
 
 ### Build package
 
+```bash
+poetry build
+```
+
+### Upload to package registry
+
+```bash
+poetry publish
+```
+
 ### Documentation
 
 #### Build
@@ -51,7 +64,3 @@ make
 cd docs
 sphinx-apidoc -o source ../jsont/
 ```
-
-
-
-

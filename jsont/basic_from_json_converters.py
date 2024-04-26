@@ -160,9 +160,8 @@ class ToNone(FromJsonConverter[None, None]):
                 target_type: type[Any],
                 annotations: Mapping[str, type],
                 from_json: Callable[[Json, type[None]], None]) -> None:
-        if js is None:
-            return None
-        raise ValueError(f"Cannot convert {js} to None")
+        if js is not None:
+            raise ValueError(f"Cannot convert {js} to None")
 
 
 class ToSimple(FromJsonConverter[TargetType, None]):
@@ -303,7 +302,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
 
     """
 
-    def __init__(self, strict: bool = False):
+    def __init__(self, strict: bool = False) -> None:
         self.strict = strict
 
     def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
@@ -341,7 +340,7 @@ def _first_success(f: Callable[..., ContainedTargetType], i: Iterable[tuple[Targ
     for args in i:
         try:
             return f(*args)
-        except ValueError as e:
+        except ValueError as e:  # noqa: PERF203
             failures.append(e)
     return failures
 

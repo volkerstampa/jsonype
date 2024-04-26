@@ -35,6 +35,7 @@ current directory is set to the project's root folder.
 
 ```bash
 pylama
+ruff check
 ```
 
 ### Build package

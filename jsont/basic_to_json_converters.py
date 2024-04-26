@@ -104,6 +104,6 @@ class FromMapping(ToJsonConverter[Mapping[str, Any]]):
         def ensure_str(k: Any) -> str:
             if isinstance(k, str):
                 return k
-            raise ValueError(f"Cannot convert {o} to json as it contains a non-str key: {k}")
+            raise ValueError(f"Cannot convert {o} to json as it contains a non-str key: {k}")  # noqa: PERF203
 
         return {ensure_str(k): to_json(v) for k, v in o.items()}

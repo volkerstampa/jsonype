@@ -97,7 +97,7 @@ class TypedJsonTestCase(TestCase):
             self.assertEqual(
                 obj, strict_typed_json.from_json(typed_json.to_json(obj), ty))
         except AssertionError:
-            print(f"Cannot convert {obj} to {ty}")
+            print(f"Cannot convert {obj} to {ty}")  # noqa: T201
             raise
 
     def assert_can_convert_from_to_json_relaxed(self, inp: Any, expected: Any, ty: type[_T]) \
@@ -106,7 +106,7 @@ class TypedJsonTestCase(TestCase):
             self.assertEqual(
                 expected, typed_json.from_json(typed_json.to_json(inp), ty))
         except AssertionError:
-            print(f"Cannot convert {inp} to {ty}")
+            print(f"Cannot convert {inp} to {ty}")  # noqa: T201
             raise
 
     def _random_typed_object(self, size: int,
@@ -160,7 +160,7 @@ class TypedJsonTestCase(TestCase):
 
     @staticmethod
     def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[str, type[str]]:
-        return ''.join(choices(printable, k=randrange(size))), str
+        return "".join(choices(printable, k=randrange(size))), str
 
     def _random_sequence(self, size: int, factories: Sequence[ObjectFactory[_T]]) \
             -> tuple[Sequence[_T], type[Sequence[_T]]]:
@@ -215,14 +215,14 @@ class TypedJsonTestCase(TestCase):
         vals, types = self._random_values(size, factories)
         keys = [self._random_symbol() for _ in vals]
         # https://github.com/python/mypy/issues/7178
-        map_type = TypedDict(self._random_symbol(), dict(zip(keys, types)))  # type: ignore
+        map_type = TypedDict(self._random_symbol(), dict(zip(keys, types)))  # type: ignore[misc] # noqa: UP013
         # the types of vals are in types, and they are zipped in the same way with
         # the keys as the vals are zipped here so this should actually be safe.
-        return map_type(**dict(zip(keys, vals))), map_type  # type: ignore
+        return map_type(**dict(zip(keys, vals))), map_type  # type: ignore[typeddict-item]
 
     @staticmethod
     def _random_symbol() -> str:
-        return ''.join(choices(ascii_letters + digits, k=10))
+        return "".join(choices(ascii_letters + digits, k=10))
 
     def _random_values(self, size: int, factories: Sequence[ObjectFactory[_T]]) \
             -> tuple[Sequence[_T], Sequence[type[_T]]]:
@@ -235,9 +235,9 @@ class TypedJsonTestCase(TestCase):
         def cannot_convert(val: _T, ty: type[_T]) -> bool:
             try:
                 typed_json.from_json(typed_json.to_json(val), ty)
-                return False
             except ValueError:
                 return True
+            return False
 
         def cannot_convert_to_previous_type(val: _T) -> bool:
             return all(cannot_convert(val, ty) for ty in previous_types)
@@ -263,5 +263,5 @@ def insert_random_ellipsis(types: Sequence[type]) -> Sequence[type]:
     return types_with_ellipsis
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

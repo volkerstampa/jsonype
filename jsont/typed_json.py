@@ -64,7 +64,7 @@ class TypedJson:
         to <class 'Address'> as it contains unknown key zip
     """
 
-    def __init__(self, strict: bool = False):
+    def __init__(self, strict: bool = False) -> None:
         self._from_json_converters: tuple[FromJsonConverter[Any, Any], ...] = (
             ToAny(),
             ToUnion(),

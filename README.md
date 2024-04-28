@@ -28,7 +28,7 @@ current directory is set to the project's root folder.
 ### Run tests
 
 ```bash
-./test.sh
+pytest
 ```
 
 ### Run checks

@@ -75,10 +75,15 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D107", "D203", "D213",
     "RUF100",
     "FA100",
     "I001",
+    "PT013",
     "PYI042"]
+
+[tool.pytest.ini_options]
+cache_dir = "build/pytest_cache"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+pytest = "^8.2.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"

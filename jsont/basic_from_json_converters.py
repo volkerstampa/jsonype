@@ -10,6 +10,20 @@ TargetType = TypeVar("TargetType")
 ContainedTargetType = TypeVar("ContainedTargetType")
 
 
+class FromJsonConversionError(ValueError):
+    def __init__(self, js: Json, target_type: type, reason: str | None = None) -> None:
+        super().__init__(f"Cannot convert {js} to {target_type}{f': {reason}' if reason else ''}",
+                         js, target_type)
+
+
+class UnsupportedTargetTypeError(ValueError):
+    def __init__(self, target_type: type, reason: str | None = None) -> None:
+        super().__init__(
+            f"Target type {target_type} is not supported{f': {reason}' if reason else ''}",
+            target_type
+        )
+
+
 class FromJsonConverter(ABC, Generic[TargetType, ContainedTargetType]):
     """The base-class for converters that convert from objects representing JSON.
 
@@ -113,8 +127,9 @@ class ToUnion(FromJsonConverter[TargetType, TargetType]):
         if res_or_failures \
                 and isinstance(res_or_failures, list) \
                 and all(isinstance(e, ValueError) for e in res_or_failures):
-            raise ValueError(f"Cannot convert {js} to any of {union_types_with_str_first}: "
-                             f"{list(zip(union_types_with_str_first, res_or_failures))}")
+            raise FromJsonConversionError(
+                js, target_type, str(list(zip(union_types_with_str_first, res_or_failures)))
+            )
         # here we know that one conversion was successful. As we only convert into the
         # type-parameters of the Union the returned result must be of the Union-type
         return cast(TargetType, res_or_failures)
@@ -143,7 +158,7 @@ class ToLiteral(FromJsonConverter[TargetType, None]):
         if js in literals:
             # as js is one of the literals it must be of the Literal[literals]-type
             return cast(TargetType, js)
-        raise ValueError(f"Cannot convert {js} to any of {literals}")
+        raise FromJsonConversionError(js, target_type)
 
 
 class ToNone(FromJsonConverter[None, None]):
@@ -161,7 +176,7 @@ class ToNone(FromJsonConverter[None, None]):
                 annotations: Mapping[str, type],
                 from_json: Callable[[Json, type[None]], None]) -> None:
         if js is not None:
-            raise ValueError(f"Cannot convert {js} to None")
+            raise FromJsonConversionError(js, NoneType)
 
 
 class ToSimple(FromJsonConverter[TargetType, None]):
@@ -177,7 +192,7 @@ class ToSimple(FromJsonConverter[TargetType, None]):
                 from_json: Callable[[Json, type[None]], None]) -> TargetType:
         if isinstance(js, target_type):
             return js
-        raise ValueError(f"Cannot convert {js} to {target_type}")
+        raise FromJsonConversionError(js, target_type)
 
 
 class ToTuple(FromJsonConverter[tuple[Any, ...], Any]):
@@ -206,16 +221,18 @@ class ToTuple(FromJsonConverter[tuple[Any, ...], Any]):
                 from_json: Callable[[Json, type[Any]], Any]) -> tuple[Any, ...]:
         element_types: Sequence[Any] = get_args(target_type)
         if element_types.count(...) > 1:
-            raise ValueError(f"Cannot convert {js} to {target_type} "
-                             f"as {target_type} has more than one ... parameter")
+            raise UnsupportedTargetTypeError(target_type,
+                                             "tuple must not have more than one ... parameter")
         if isinstance(js, Sequence):
             element_types = _replace_ellipsis(element_types, len(js))
             if len(js) != len(element_types):
-                raise ValueError(
-                    f"Cannot convert {js} to {target_type} "
-                    "as number of type parameter do not match")
+                raise FromJsonConversionError(
+                    js,
+                    target_type,
+                    f"Number of elements: {len(js)} not equal to tuple-size {len(element_types)}"
+                )
             return tuple(from_json(e, ty) for e, ty in zip(js, element_types))
-        raise ValueError(f"Cannot convert {js} to {target_type} as types are not convertible")
+        raise FromJsonConversionError(js, target_type)
 
 
 class ToList(FromJsonConverter[Sequence[TargetType], TargetType]):
@@ -241,7 +258,7 @@ class ToList(FromJsonConverter[Sequence[TargetType], TargetType]):
         assert len(element_types) == 1
         if isinstance(js, Sequence):
             return [from_json(e, element_types[0]) for e in js]
-        raise ValueError(f"Cannot convert {js} to {target_type}")
+        raise FromJsonConversionError(js, target_type)
 
 
 class ToMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
@@ -266,10 +283,10 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
         key_value_types = get_args(target_type) or (str, Any)
         key_type, value_type = key_value_types
         if key_type is not str:
-            raise ValueError(f"Cannot convert {js} to mapping with key-type: {key_type}")
+            raise UnsupportedTargetTypeError(target_type, "Mapping must have str key-type")
         if isinstance(js, Mapping):
             return {k: from_json(v, value_type) for k, v in js.items()}
-        raise ValueError(f"Cannot convert {js} to {target_type}")
+        raise FromJsonConversionError(js, target_type)
 
 
 @runtime_checkable
@@ -319,19 +336,16 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
             t = annotations.get(k)
             if t:
                 return t
-            raise ValueError(f"Cannot convert {js} to {target_type} as it contains unknown key {k}")
+            raise FromJsonConversionError(js, target_type, f"Unknown key: {k}")
 
         if isinstance(js, Mapping) and isinstance(target_type, HasRequiredKeys):
             if target_type.__required_keys__.issubset(frozenset(js.keys())):
                 items = js.items() if self.strict \
                     else [(k, v) for k, v in js.items() if k in annotations]
                 return {k: from_json(v, type_for_key(k)) for k, v in items}
-            raise ValueError(
-                f"Cannot convert {js} to {target_type} "
-                "as it does not contain all required keys "
-                f"{target_type.__required_keys__}"
-            )
-        raise ValueError(f"Cannot convert {js} to {target_type}")
+            raise FromJsonConversionError(js, target_type,
+                                          f"Required key missing: {target_type.__required_keys__}")
+        raise FromJsonConversionError(js, target_type)
 
 
 def _first_success(f: Callable[..., ContainedTargetType], i: Iterable[tuple[TargetType, ...]]) \

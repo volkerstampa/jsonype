@@ -6,6 +6,16 @@ from jsont.base_types import Json, JsonNull, JsonSimple
 SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
 
 
+class ToJsonConversionError(ValueError):
+    def __init__(self, o: Any, reason: str | None = None) -> None:
+        super().__init__(f"Cannot convert {o} to JSON {f': {reason}' if reason else ''}")
+
+
+class UnsupportedSourceTypeError(ValueError):
+    def __init__(self, o: Any) -> None:
+        super().__init__(f"Converting objects of type {type(o)} to JSON not supported")
+
+
 class ToJsonConverter(ABC, Generic[SourceType_contra]):
     """The base-class for converters that convert to objects representing JSON.
 
@@ -104,6 +114,6 @@ class FromMapping(ToJsonConverter[Mapping[str, Any]]):
         def ensure_str(k: Any) -> str:
             if isinstance(k, str):
                 return k
-            raise ValueError(f"Cannot convert {o} to json as it contains a non-str key: {k}")  # noqa: PERF203
+            raise ToJsonConversionError(o, f"Contains non str key: {k}")
 
         return {ensure_str(k): to_json(v) for k, v in o.items()}

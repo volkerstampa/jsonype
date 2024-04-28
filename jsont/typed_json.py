@@ -1,12 +1,12 @@
 from inspect import get_annotations
-from typing import Any, Mapping, Sequence, TypeVar, cast, get_origin
+from typing import Any, TypeVar, cast, get_origin
 
-from jsont.base_types import Json, JsonNull, JsonSimple
+from jsont.base_types import Json
 from jsont.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
                                               ToMapping, ToNone, ToSimple, ToTuple, ToTypedMapping,
-                                              ToUnion)
+                                              ToUnion, UnsupportedTargetTypeError)
 from jsont.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
-                                            ToJsonConverter)
+                                            ToJsonConverter, UnsupportedSourceTypeError)
 
 TargetType = TypeVar("TargetType")
 
@@ -101,7 +101,7 @@ class TypedJson:
                           conv.can_convert(o)),
                          None)
         if not converter:
-            raise ValueError(f"{o} of type {type(o)} cannot be converted to Json")
+            raise UnsupportedSourceTypeError(o)
         return converter.convert(o, self.to_json)
 
     def from_json(self, js: Json, target_type: type[TargetType]) -> TargetType:
@@ -125,28 +125,6 @@ class TypedJson:
                           conv.can_convert(target_type, origin_of_generic)),
                          None)
         if not converter:
-            raise ValueError(
-                f"{target_type}{f' ({origin_of_generic})' if origin_of_generic else ''} "
-                "as target type not supported"
-            )
+            raise UnsupportedTargetTypeError(target_type)
         # converter can_convert from type[T] so it should return T
         return cast(TargetType, converter.convert(js, target_type, annotations, self.from_json))
-
-    @staticmethod
-    def _simple_to_json(js: JsonSimple) -> Json:
-        return js
-
-    @staticmethod
-    def _null_to_json(_o: JsonNull) -> JsonNull:
-        return None
-
-    def _sequence_to_json(self, li: Sequence[Any]) -> Sequence[Json]:
-        return [self.to_json(e) for e in li]
-
-    def _mapping_to_json(self, o: Mapping[Any, Any]) -> Mapping[str, Json]:
-        def ensure_str(k: Any) -> str:
-            if isinstance(k, str):
-                return k
-            raise ValueError(f"Cannot convert {o} to json as it contains a non-str key: {k}")
-
-        return {ensure_str(k): self.to_json(v) for k, v in o.items()}

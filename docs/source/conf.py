@@ -8,6 +8,8 @@ from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 
 sys.path.insert(0, os.path.abspath("../../"))
 
+from jsont._version import __version__
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -15,7 +17,7 @@ project = 'jsont'
 # noinspection PyShadowingBuiltins
 copyright = '2023, Volker Stampa'
 author = 'Volker Stampa'
-release = '0.0.1'
+release = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -31,6 +33,9 @@ extensions = [
 intersphinx_mapping = {'python': ('https://docs.python.org/', None)}
 templates_path = ['_templates']
 exclude_patterns = []
+show_warning_types = True
+# due to TypeVars (see also: https://github.com/sphinx-doc/sphinx/issues/10974)
+suppress_warnings = ['ref.class', 'ref.obj']
 
 doctest_default_flags = NORMALIZE_WHITESPACE | ELLIPSIS
 
@@ -39,4 +44,3 @@ doctest_default_flags = NORMALIZE_WHITESPACE | ELLIPSIS
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']

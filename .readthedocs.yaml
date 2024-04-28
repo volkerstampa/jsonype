@@ -1,0 +1,14 @@
+version: 2
+
+build:
+  os: "ubuntu-lts-latest"
+  tools:
+    python: "3.11"
+  jobs:
+    post_create_environment:
+      - pip install poetry
+    post_install:
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install
+
+sphinx:
+  configuration: docs/source/conf.py

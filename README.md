@@ -4,6 +4,15 @@
 
 See [documentation](https://jsont.readthedocs.io).
 
+## Similar tools
+
+- [typedload](https://github.com/ltworf/typedload) is also a package to 
+  "Load and dump json-like data into typed data structures in Python3". It uses 
+  a less permissive license.
+- [Pydantic](https://docs.pydantic.dev) is a widely used data validation library for Python.
+  It is often used for converting to and from JSON, but offers much more than that. Unlike in case of
+  jsont classes that should be converted from/to JSON need to inherit from a base class (`BaseModel`).
+
 ## Development
 
 ### Prerequisites

@@ -13,7 +13,7 @@ from jsont._version import __version__
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'jsont'
+project = 'json-t'
 # noinspection PyShadowingBuiltins
 copyright = '2023, Volker Stampa'
 author = 'Volker Stampa'

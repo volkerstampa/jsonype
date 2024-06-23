@@ -1,8 +1,8 @@
-# jsont
+# json-t
 
 ## Usage
 
-See [documentation](https://jsont.readthedocs.io).
+See [documentation](https://json-t.readthedocs.io).
 
 ## Similar tools
 
@@ -11,7 +11,7 @@ See [documentation](https://jsont.readthedocs.io).
   a less permissive license.
 - [Pydantic](https://docs.pydantic.dev) is a widely used data validation library for Python.
   It is often used for converting to and from JSON, but offers much more than that. Unlike in case of
-  jsont classes that should be converted from/to JSON need to inherit from a base class (`BaseModel`).
+  json-t classes that should be converted from/to JSON need to inherit from a base class (`BaseModel`).
 
 ## Development
 

@@ -1,5 +1,5 @@
-Welcome to jsont's documentation!
-=================================
+Welcome to json-t's documentation!
+==================================
 
 .. toctree::
     :maxdepth: 1
@@ -7,7 +7,7 @@ Welcome to jsont's documentation!
 
     modules
 
-jsont is a package for converting Python's
+json-t is a package for converting Python's
 `JSON representation <https://docs.python.org/3/library/json.html#py-to-json-table>`_
 to (or from) a Python object of a given
 type if possible (i.e. a suitable converter is available).
@@ -17,9 +17,9 @@ This is most useful when the given type contains type-hints such that this type-
 Getting Started
 ---------------
 
-Add ``jsont`` to your dependencies or install with pip::
+Add ``json-t`` to your dependencies or install with pip::
 
-   pip install jsont
+   pip install json-t
 
 For details on how to use it see :class:`jsont.typed_json.TypedJson`.
 

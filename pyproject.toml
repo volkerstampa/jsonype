@@ -1,8 +1,9 @@
 [tool.poetry]
-name = "jsont"
+name = "json-t"
 version = "0"  # ignored
 description = "A package for converting classes with type hints to/from JSON"
-homepage = "https://github.com/volkerstampa/jsont"
+homepage = "https://github.com/volkerstampa/json-t"
+packages = [{include = "jsont"}]
 authors = ["Volker Stampa <Volker.Stampa@gmx.net>"]
 maintainers = ["Volker Stampa <Volker.Stampa@gmx.net>"]
 readme = "README.md"

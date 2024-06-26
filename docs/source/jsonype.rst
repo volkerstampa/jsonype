@@ -1,10 +1,10 @@
-jsont package
-=============
+jsonype package
+===============
 
 Module contents
 ---------------
 
-.. automodule:: jsont
+.. automodule:: jsonype
    :members:
    :special-members: __init__
    :undoc-members:

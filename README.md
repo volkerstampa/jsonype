@@ -1,8 +1,8 @@
-# json-t
+# jsonype
 
 ## Usage
 
-See [documentation](https://json-t.readthedocs.io).
+See [documentation](https://jsonype.readthedocs.io).
 
 ## Similar tools
 
@@ -11,7 +11,7 @@ See [documentation](https://json-t.readthedocs.io).
   a less permissive license.
 - [Pydantic](https://docs.pydantic.dev) is a widely used data validation library for Python.
   It is often used for converting to and from JSON, but offers much more than that. Unlike in case of
-  json-t classes that should be converted from/to JSON need to inherit from a base class (`BaseModel`).
+  jsonype classes that should be converted from/to JSON need to inherit from a base class (`BaseModel`).
 
 ## Development
 
@@ -56,5 +56,5 @@ current directory is set to the project's root folder.
 
 ```bash
 cd docs
-sphinx-apidoc -o source ../jsont/
+sphinx-apidoc -o source ../jsonype/
 ```

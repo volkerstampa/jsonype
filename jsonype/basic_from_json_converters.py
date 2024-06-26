@@ -4,7 +4,7 @@ from types import NoneType
 from typing import (Any, Callable, Generic, Iterable, Literal, Mapping, Optional, Protocol,
                     Sequence, TypeVar, Union, cast, get_args, runtime_checkable)
 
-from jsont.base_types import Json, JsonSimple
+from jsonype.base_types import Json, JsonSimple
 
 TargetType = TypeVar("TargetType")
 ContainedTargetType = TypeVar("ContainedTargetType")
@@ -343,7 +343,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType], TargetType]):
                 items = js.items() if self.strict \
                     else [(k, v) for k, v in js.items() if k in annotations]
                 return {k: from_json(v, type_for_key(k)) for k, v in items}
-            raise FromJsonConversionError(js, target_type,
+            raise FromJsonConversionError(js, cast(type, target_type),
                                           f"Required key missing: {target_type.__required_keys__}")
         raise FromJsonConversionError(js, target_type)
 

@@ -1,9 +1,8 @@
 [tool.poetry]
-name = "json-t"
+name = "jsonype"
 version = "0"  # ignored
 description = "A package for converting classes with type hints to/from JSON"
-homepage = "https://github.com/volkerstampa/json-t"
-packages = [{include = "jsont"}]
+homepage = "https://github.com/volkerstampa/jsonype"
 authors = ["Volker Stampa <Volker.Stampa@gmx.net>"]
 maintainers = ["Volker Stampa <Volker.Stampa@gmx.net>"]
 readme = "README.md"
@@ -22,15 +21,22 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.setuptools_scm]
-version_file = "jsont/_version.py"
+version_file = "jsonype/_version.py"
 local_scheme = "poetry_setuptools_scm_plugin:no_local_scheme"
 
 [tool.pylama]
-linters = "eradicate,mccabe,mypy,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture,isort"
+# dont run mypy through pylama because of:
+# https://github.com/klen/pylama/issues/163
+linters = "eradicate,mccabe,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture,isort"
 skip = "docs/*"
 
 [tool.pylama.linter.pydocstyle]
 ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
+
+[tool.pylama.linter.mypy]
+cache_dir = "build/.mypy_cache"
+strict = "True"
+files = "jsonype,tests"
 
 [tool.pydocstyle]
 ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
@@ -38,11 +44,11 @@ ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
 [tool.mypy]
 cache_dir = "build/.mypy_cache"
 strict = "True"
-files = "jsont,tests"
+files = "jsonype,tests"
 
 [tool.isort]
 line_length = 100
-src_paths = ["jsont", "tests"]
+src_paths = ["jsonype", "tests"]
 
 [tool.pylint."messages control"]
 disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
@@ -55,7 +61,7 @@ cc_min = "C"
 
 [tool.vulture]
 min_confidence = 61
-paths = ["jsont", "tests"]
+paths = ["jsonype", "tests"]
 
 [tool.ruff]
 line-length = 100

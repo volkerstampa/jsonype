@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, Mapping, Sequence, TypeVar, get_args
 
-from jsont.base_types import Json, JsonNull, JsonSimple
+from jsonype.base_types import Json, JsonNull, JsonSimple
 
 SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
 

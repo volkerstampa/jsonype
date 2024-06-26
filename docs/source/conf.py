@@ -8,12 +8,12 @@ from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 
 sys.path.insert(0, os.path.abspath("../../"))
 
-from jsont._version import __version__
+from jsonype._version import __version__
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'json-t'
+project = 'jsonype'
 # noinspection PyShadowingBuiltins
 copyright = '2023, Volker Stampa'
 author = 'Volker Stampa'

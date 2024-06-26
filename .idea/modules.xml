@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/jsont.iml" filepath="$PROJECT_DIR$/.idea/jsont.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/jsonype.iml" filepath="$PROJECT_DIR$/.idea/jsonype.iml" />
     </modules>
   </component>
 </project>

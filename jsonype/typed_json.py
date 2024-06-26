@@ -1,12 +1,12 @@
 from inspect import get_annotations
 from typing import Any, TypeVar, cast, get_origin
 
-from jsont.base_types import Json
-from jsont.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
-                                              ToMapping, ToNone, ToSimple, ToTuple, ToTypedMapping,
-                                              ToUnion, UnsupportedTargetTypeError)
-from jsont.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
-                                            ToJsonConverter, UnsupportedSourceTypeError)
+from jsonype.base_types import Json
+from jsonype.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
+                                                ToMapping, ToNone, ToSimple, ToTuple,
+                                                ToTypedMapping, ToUnion, UnsupportedTargetTypeError)
+from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
+                                              ToJsonConverter, UnsupportedSourceTypeError)
 
 TargetType = TypeVar("TargetType")
 
@@ -22,7 +22,7 @@ class TypedJson:
 
     Example:
         >>> from typing import TypedDict
-        >>> from jsont import TypedJson
+        >>> from jsonype import TypedJson
         >>> from json import loads
         >>>
         >>> typed_json = TypedJson()
@@ -59,9 +59,9 @@ class TypedJson:
         >>> try:
         ...     person = TypedJson(strict=True).from_json(js, Person)
         ... except ValueError as e:
-        ...     print(e)
-        Cannot convert {'street': '...', ..., 'zip': 'ignored'}
-        to <class 'Address'> as it contains unknown key zip
+        ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+        ("Cannot convert {'street': '...', ..., 'zip': 'ignored'}
+        to <class 'Address'>: Unknown key: zip", ...
     """
 
     def __init__(self, strict: bool = False) -> None:

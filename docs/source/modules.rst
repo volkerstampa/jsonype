@@ -1,7 +1,7 @@
-jsont
-=====
+jsonype
+=======
 
 .. toctree::
    :maxdepth: 3
 
-   jsont
+   jsonype

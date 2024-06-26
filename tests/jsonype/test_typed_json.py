@@ -6,9 +6,9 @@ from types import NoneType
 from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeAlias,
                     TypedDict, TypeVar, Union, cast)
 
-from pytest import mark
+from pytest import mark, raises
 
-from jsont import TypedJson
+from jsonype import FromJsonConversionError, TypedJson
 
 _T = TypeVar("_T")
 
@@ -19,7 +19,7 @@ typed_json = TypedJson()
 strict_typed_json = TypedJson(strict=True)
 
 
-@mark.parametrize(  # type: ignore [misc]
+@mark.parametrize(
     "simple_obj",
     [0, -1, 2, 0.0, 1.0, -2.0, True, False, "Hello", "", None],
 )
@@ -27,14 +27,14 @@ def test_simple(simple_obj: Any) -> None:
     assert_can_convert_from_to_json(simple_obj, type(simple_obj))
 
 
-@mark.parametrize("simple_obj", [0, "Hello", None])  # type: ignore [misc]
+@mark.parametrize("simple_obj", [0, "Hello", None])
 def test_simple_with_union_type(simple_obj: Union[int, str, None]) -> None:
     # Union is a type-special-form so cast to type explicitly
     assert_can_convert_from_to_json(
         simple_obj, cast(type[Optional[Union[int, str]]], Optional[Union[int, str]]))
 
 
-@mark.parametrize(  # type: ignore [misc]
+@mark.parametrize(
     ("li", "ty"),
     [
         ([0, -1, 2], int),
@@ -48,7 +48,7 @@ def test_homogeneous_list(li: Sequence[Any], ty: TypeAlias) -> None:
     assert_can_convert_from_to_json(li, list[ty])
 
 
-@mark.parametrize("li", [[1], ["Hi"]])  # type: ignore [misc]
+@mark.parametrize("li", [[1], ["Hi"]])
 def test_untyped_list(li: Sequence[Any]) -> None:
     assert_can_convert_from_to_json(li, list)
 
@@ -67,7 +67,7 @@ def test_empty_tuple() -> None:
     assert_can_convert_from_to_json((), tuple[()])
 
 
-@mark.parametrize(  # type: ignore [misc]
+@mark.parametrize(
     ("m", "ty"),
     [({"k1": 1}, int), ({"k1": True, "k2": False}, bool), ({"k1": None}, NoneType)],
 )
@@ -95,6 +95,16 @@ def test_typed_dict() -> None:
         k2: int
 
     assert_can_convert_from_to_json({"k1": 1., "k2": 2}, Map)
+
+
+def test_typed_dict_fail_if_key_missing() -> None:
+    class Map(TypedDict):
+        k1: float
+        k2: int
+
+    with raises(FromJsonConversionError) as exc_info:
+        typed_json.from_json({"k1": 1.}, Map)
+    assert "k2" in str(exc_info.value)
 
 
 def test_random_objects() -> None:

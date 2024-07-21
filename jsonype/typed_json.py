@@ -7,6 +7,7 @@ from jsonype.basic_from_json_converters import (FromJsonConverter, ToAny, ToList
                                                 ToTypedMapping, ToUnion, UnsupportedTargetTypeError)
 from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
                                               ToJsonConverter, UnsupportedSourceTypeError)
+from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
 
 TargetType = TypeVar("TargetType")
 
@@ -21,17 +22,17 @@ class TypedJson:
             exist in the target-type.
 
     Example:
-        >>> from typing import TypedDict
+        >>> from typing import NamedTuple
         >>> from jsonype import TypedJson
         >>> from json import loads
         >>>
         >>> typed_json = TypedJson()
         >>>
-        >>> class Address(TypedDict):
+        >>> class Address(NamedTuple):
         ...     street: str
         ...     city: str
         >>>
-        >>> class Person(TypedDict):
+        >>> class Person(NamedTuple):
         ...     name: str
         ...     address: Address
         ...     some_related_number: int
@@ -47,21 +48,21 @@ class TypedJson:
         ...     }''')
         >>> person = typed_json.from_json(js, Person)
         >>>
-        >>> assert person == {
-        ...     "name": "John Doe",
-        ...     "address": {
-        ...         "street": "123 Maple Street",
-        ...         "city": "Any town"
-        ...     },
-        ...     "some_related_number": 5
-        ... }
+        >>> assert person == Person(
+        ...     name="John Doe",
+        ...     address=Address(
+        ...         street="123 Maple Street",
+        ...         city="Any town"
+        ...     ),
+        ...     some_related_number=5
+        ... )
         >>>
         >>> try:
         ...     person = TypedJson(strict=True).from_json(js, Person)
         ... except ValueError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ("Cannot convert {'street': '...', ..., 'zip': 'ignored'}
-        to <class 'Address'>: Unknown key: zip", ...
+        to <class 'Address'>: unexpected keys: {'zip'}", ...
     """
 
     def __init__(self, strict: bool = False) -> None:
@@ -71,6 +72,7 @@ class TypedJson:
             ToLiteral(),
             ToNone(),
             ToSimple(),
+            ToNamedTuple(strict),
             ToTuple(),
             ToList(),
             ToMapping(),
@@ -79,6 +81,7 @@ class TypedJson:
         self._to_json_converters: tuple[ToJsonConverter[Any], ...] = (
             FromNone(),
             FromSimple(),
+            FromNamedTuple(),
             FromSequence(),
             FromMapping(),
         )

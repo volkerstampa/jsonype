@@ -1,8 +1,10 @@
+# Purpose of this file is re-export symbols at package level
+# so unused import are expected
 # pylint: disable=C0414
 from .base_types import Json as Json  # noqa: W0611
 
 # isort: off
-from .basic_from_json_converters import (FromJsonConversionError # noqa: W0611
+from .basic_from_json_converters import (FromJsonConversionError  # noqa: W0611
                                          as FromJsonConversionError)
 # isort: on
 from .basic_from_json_converters import FromJsonConverter as FromJsonConverter  # noqa: W0611
@@ -25,6 +27,8 @@ from .basic_to_json_converters import FromNone as FromNone  # noqa: W0611
 from .basic_to_json_converters import FromSequence as FromSequence  # noqa: W0611
 from .basic_to_json_converters import FromSimple as FromSimple  # noqa: W0611
 from .basic_to_json_converters import ToJsonConverter as ToJsonConverter  # noqa: W0611
+from .named_tuple_converters import FromNamedTuple as FromNamedTuple  # noqa: W0611
+from .named_tuple_converters import ToNamedTuple as ToNamedTuple  # noqa: W0611
 from .typed_json import TypedJson as TypedJson  # noqa: W0611
 
 __all__ = [symbol for symbol in dir() if symbol and symbol[0].isupper()]

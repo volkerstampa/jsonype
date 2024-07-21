@@ -6,9 +6,11 @@ import os
 import sys
 from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 
+# noinspection PyProtectedMember
+from jsonype._version import __version__
+
 sys.path.insert(0, os.path.abspath("../../"))
 
-from jsonype._version import __version__
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

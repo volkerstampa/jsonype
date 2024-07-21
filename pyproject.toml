@@ -73,7 +73,7 @@ select = ["ALL"]
 ignore = ["D100", "D101", "D102", "D103", "D104", "D107", "D203", "D213",
     "D406", "D407", "D410", "D411", "D413",
     "ARG002",
-    "ANN101", "ANN401",
+    "ANN101", "ANN401", "ANN102",
     "S101", "S311", 
     "FA102",
     "COM812",
@@ -90,7 +90,7 @@ cache_dir = "build/pytest_cache"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pytest = "^8.2.2"
+pytest = "^8.3.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"

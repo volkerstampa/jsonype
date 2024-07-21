@@ -1,14 +1,16 @@
 from inspect import get_annotations
+from json import dumps, loads
 from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Callable, Iterable, List, Mapping, Optional, Sequence, Tuple, TypeAlias,
-                    TypedDict, TypeVar, Union, cast)
+from typing import (Any, Callable, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple,
+                    TypeAlias, TypedDict, TypeVar, Union, cast)
 
 from pytest import mark, raises
 
 from jsonype import FromJsonConversionError, TypedJson
+from jsonype.named_tuple_converters import NamedTupleTarget_co
 
 _T = TypeVar("_T")
 
@@ -107,6 +109,16 @@ def test_typed_dict_fail_if_key_missing() -> None:
     assert "k2" in str(exc_info.value)
 
 
+def test_named_tuple() -> None:
+    class SubDemo(NamedTuple):
+        field: str
+
+    class Demo(NamedTuple):
+        sub: SubDemo
+
+    assert_can_convert_from_to_json(Demo(SubDemo("Hello")), Demo)
+
+
 def test_random_objects() -> None:
     for _ in range(500):
         assert_can_convert_from_to_json(*(_random_typed_object(8)))
@@ -114,8 +126,11 @@ def test_random_objects() -> None:
 
 def assert_can_convert_from_to_json(obj: Any, ty: type[_T]) -> None:
     try:
-        assert obj == strict_typed_json.from_json(typed_json.to_json(obj), ty)
+        js = typed_json.to_json(obj)
+        js = loads(dumps(js))
+        assert strict_typed_json.from_json(js, ty) == obj
     except AssertionError:
+        # helps when debugging test failures
         print(f"Cannot convert {obj} to {ty}")  # noqa: T201
         raise
 
@@ -125,6 +140,7 @@ def assert_can_convert_from_to_json_relaxed(inp: Any, expected: Any, ty: type[_T
     try:
         assert expected == typed_json.from_json(typed_json.to_json(inp), ty)
     except AssertionError:
+        # helps when debugging test failures
         print(f"Cannot convert {inp} to {ty}")  # noqa: T201
         raise
 
@@ -140,7 +156,8 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
     return (_random_tuple,
             _random_tuple_with_ellipsis,
             _random_untyped_list,
-            _random_untyped_map)
+            _random_untyped_map,
+            _random_named_tuple)
 
 
 def _unambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
@@ -251,8 +268,20 @@ def _random_typed_map(size: int, factories: Sequence[ObjectFactory[Any]]) \
     return map_type(**dict(zip(keys, vals))), map_type  # type: ignore[typeddict-item]
 
 
+def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
+        -> tuple[NamedTupleTarget_co, type[NamedTupleTarget_co]]:
+    vals, types = _random_values(size, factories)
+    keys = [_random_symbol() for _ in vals]
+    # Functional syntax to construct NamedTuple classes -> _make exists
+    namedtuple_type = \
+        cast(type[NamedTupleTarget_co], NamedTuple(_random_symbol(), list(zip(keys, types))))
+    # _make is actually public
+    # noinspection PyProtectedMember
+    return namedtuple_type._make(vals), namedtuple_type  # noqa: E1101
+
+
 def _random_symbol() -> str:
-    return "".join(choices(ascii_letters + digits, k=10))
+    return "".join([choice(ascii_letters), *choices(ascii_letters + digits, k=10)])
 
 
 def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \

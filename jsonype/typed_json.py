@@ -7,6 +7,7 @@ from jsonype.basic_from_json_converters import (FromJsonConverter, ToAny, ToList
                                                 ToTypedMapping, ToUnion, UnsupportedTargetTypeError)
 from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
                                               ToJsonConverter, UnsupportedSourceTypeError)
+from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
 
 TargetType = TypeVar("TargetType")
@@ -22,6 +23,7 @@ class TypedJson:
             exist in the target-type.
 
     Example:
+        >>> from dataclasses import dataclass
         >>> from typing import NamedTuple
         >>> from jsonype import TypedJson
         >>> from json import loads
@@ -32,7 +34,8 @@ class TypedJson:
         ...     street: str
         ...     city: str
         >>>
-        >>> class Person(NamedTuple):
+        >>> @dataclass
+        ... class Person:
         ...     name: str
         ...     address: Address
         ...     some_related_number: int
@@ -58,11 +61,27 @@ class TypedJson:
         ... )
         >>>
         >>> try:
+        ...     # strict conversion does not accept extra fields in the JSON-object
         ...     person = TypedJson(strict=True).from_json(js, Person)
         ... except ValueError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ("Cannot convert {'street': '...', ..., 'zip': 'ignored'}
         to <class 'Address'>: unexpected keys: {'zip'}", ...
+        >>>
+        >>> # JSON-types must match expected types:
+        >>> js = loads('''{
+        ...         "name": "John Doe",
+        ...         "address": {
+        ...             "street": "123 Maple Street",
+        ...             "city": "Any town"
+        ...         },
+        ...         "some_related_number": "5"
+        ...     }''')
+        >>> try:
+        ...     person = typed_json.from_json(js, Person)
+        ... except ValueError as e:
+        ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+        ("Cannot convert 5 to <class 'int'>", ...
     """
 
     def __init__(self, strict: bool = False) -> None:
@@ -73,6 +92,7 @@ class TypedJson:
             ToNone(),
             ToSimple(),
             ToNamedTuple(strict),
+            ToDataclass(),
             ToTuple(),
             ToList(),
             ToMapping(),
@@ -82,6 +102,7 @@ class TypedJson:
             FromNone(),
             FromSimple(),
             FromNamedTuple(),
+            FromDataclass(),
             FromSequence(),
             FromMapping(),
         )

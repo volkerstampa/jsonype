@@ -40,7 +40,7 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
 
     @abstractmethod
     def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
-        """Convert the given object of type ``T`` to an object representing JSON.
+        """Convert the given object of type ``SourceType_contra`` to an object representing JSON.
 
         Args:
             o: the object to convert

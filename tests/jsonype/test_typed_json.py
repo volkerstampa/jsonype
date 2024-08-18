@@ -1,3 +1,4 @@
+from dataclasses import dataclass, make_dataclass
 from inspect import get_annotations
 from json import dumps, loads
 from random import choice, choices, gauss, randint, randrange, uniform
@@ -10,6 +11,7 @@ from typing import (Any, Callable, Iterable, List, Mapping, NamedTuple, Optional
 from pytest import mark, raises
 
 from jsonype import FromJsonConversionError, TypedJson
+from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
 
 _T = TypeVar("_T")
@@ -119,6 +121,18 @@ def test_named_tuple() -> None:
     assert_can_convert_from_to_json(Demo(SubDemo("Hello")), Demo)
 
 
+def test_dataclass() -> None:
+    @dataclass
+    class SubDemo:
+        field: str
+
+    @dataclass
+    class Demo:
+        sub: SubDemo
+
+    assert_can_convert_from_to_json(Demo(SubDemo("Hello")), Demo)
+
+
 def test_random_objects() -> None:
     for _ in range(500):
         assert_can_convert_from_to_json(*(_random_typed_object(8)))
@@ -157,7 +171,8 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_tuple_with_ellipsis,
             _random_untyped_list,
             _random_untyped_map,
-            _random_named_tuple)
+            _random_named_tuple,
+            _random_dataclass)
 
 
 def _unambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
@@ -278,6 +293,16 @@ def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
     # _make is actually public
     # noinspection PyProtectedMember
     return namedtuple_type._make(vals), namedtuple_type  # noqa: E1101
+
+
+def _random_dataclass(size: int, factories: Sequence[ObjectFactory[Any]]) \
+        -> tuple[DataclassTarget_co, type[DataclassTarget_co]]:
+    vals, types = _random_values(size, factories)
+    keys = [_random_symbol() for _ in vals]
+    dataclass_type = make_dataclass(_random_symbol(), list(zip(keys, types)))
+    # dataclass_type is a dataclass-type as it was created with make_dataclass
+    # noinspection PyTypeChecker
+    return dataclass_type(**dict(zip(keys, vals))), dataclass_type
 
 
 def _random_symbol() -> str:

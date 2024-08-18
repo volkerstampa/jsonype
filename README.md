@@ -17,13 +17,14 @@ See [documentation](https://jsonype.readthedocs.io).
 
 ### Prerequisites
 
-- python >= 3.11:
+- Python >= 3.11:
   Can be installed with [pyenv](https://github.com/pyenv/pyenv):
-  - pyenv install 3.11
-- [Poetry](https://python-poetry.org/) >=1.2
-  On Ubuntu can be installed with `sudo apt install python3-poetry`. See
-  [Poetry's documentation](https://python-poetry.org/docs/#installation)
-  for alternative installation options.
+  - `pyenv install 3.11`
+- [Poetry](https://python-poetry.org/) >=1.2: Can be installed with [pipx](https://pipx.pypa.io/):
+  - `pipx install poetry`
+
+  See [Poetry's documentation](https://python-poetry.org/docs/#installation)
+  for alternative installation options, but make sure that poetry plugins can be installed.
 - [make](https://www.gnu.org/software/make/) for building documentation
 
 ### Setup virtual env

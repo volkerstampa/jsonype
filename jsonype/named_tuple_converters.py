@@ -39,7 +39,7 @@ class _NamedTupleProtocol(Protocol):  # noqa: R0903
 class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
     """Convert an object representing JSON to a :class:`typing.NamedTuple`.
 
-    The JSON object is expeted to have keys corresponding to the ``NamedTuple`` fields.
+    The JSON object is expected to have keys corresponding to the ``NamedTuple`` fields.
     Each value is converted to the corresponding field type. In case of an untyped ``NamedTuple``,
     the field type is assumed to be ``Any``.
     """
@@ -74,6 +74,8 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
 
         # a type-object for type T can be "called" to construct an instance
         instance_factory = cast(Callable[..., NamedTupleTarget_co], target_type)
+        # NamedTuple._fields is public
+        # noinspection PyProtectedMember
         return instance_factory(
             **{field_name: from_json(json_value_or_default(field_name),
                                      annotations.get(field_name, object))

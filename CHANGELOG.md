@@ -1,7 +1,7 @@
 Changelog
 =========
 
-## next
+## 0.3.0
 
 - Add support for converting from/to dataclasses
 

@@ -26,7 +26,7 @@ class TypedJson:
         >>> from dataclasses import dataclass
         >>> from typing import NamedTuple
         >>> from jsonype import TypedJson
-        >>> from json import loads
+        >>> from json import dumps, loads
         >>>
         >>> typed_json = TypedJson()
         >>>
@@ -82,6 +82,17 @@ class TypedJson:
         ... except ValueError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ("Cannot convert 5 (type: <class 'str'>) to <class 'int'>", ...
+        >>>
+        >>> # Objects can be converted to JSON
+        >>> print(dumps(typed_json.to_json(person), indent=2))
+        {
+          "name": "John Doe",
+          "address": {
+            "street": "123 Maple Street",
+            "city": "Any town"
+          },
+          "some_related_number": 5
+        }
     """
 
     def __init__(self, strict: bool = False) -> None:

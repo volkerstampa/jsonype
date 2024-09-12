@@ -51,6 +51,13 @@ current directory is set to the project's root folder.
 ./build.sh
 ```
 
+### Release
+
+```bash
+./release.sh [#.#.#]
+git push [GITHUB-REPO] v[#.#.#]
+```
+
 ### Documentation
 
 #### Add new modules/packages

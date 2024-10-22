@@ -1,7 +1,7 @@
 from inspect import get_annotations
 from typing import Any, TypeVar, cast, get_origin
 
-from jsonype.base_types import Json
+from jsonype.base_types import Json, JsonPath
 from jsonype.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
                                                 ToMapping, ToNone, ToSimple, ToTuple,
                                                 ToTypedMapping, ToUnion, UnsupportedTargetTypeError)
@@ -25,7 +25,7 @@ class TypedJson:
     Example:
         >>> from dataclasses import dataclass
         >>> from typing import NamedTuple
-        >>> from jsonype import TypedJson
+        >>> from jsonype import TypedJson, FromJsonConversionError, JsonPath
         >>> from json import dumps, loads
         >>>
         >>> typed_json = TypedJson()
@@ -33,21 +33,21 @@ class TypedJson:
         >>> class Address(NamedTuple):
         ...     street: str
         ...     city: str
+        ...     some_related_number: int
         >>>
         >>> @dataclass
         ... class Person:
         ...     name: str
         ...     address: Address
-        ...     some_related_number: int
         >>>
         >>> js = loads('''{
         ...         "name": "John Doe",
         ...         "address": {
         ...             "street": "123 Maple Street",
         ...             "city": "Any town",
+        ...             "some_related_number": 5,
         ...             "zip": "ignored"
-        ...         },
-        ...         "some_related_number": 5
+        ...         }
         ...     }''')
         >>> person = typed_json.from_json(js, Person)
         >>>
@@ -55,43 +55,47 @@ class TypedJson:
         ...     name="John Doe",
         ...     address=Address(
         ...         street="123 Maple Street",
-        ...         city="Any town"
+        ...         city="Any town",
+        ...         some_related_number=5
         ...     ),
-        ...     some_related_number=5
         ... )
         >>>
         >>> try:
         ...     # strict conversion does not accept extra fields in the JSON-object
         ...     person = TypedJson(strict=True).from_json(js, Person)
-        ... except ValueError as e:
+        ... except FromJsonConversionError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ("Cannot convert {'street': '...', ..., 'zip': 'ignored'} (type: <class 'dict'>)
-        to <class 'Address'>: unexpected keys: {'zip'}", ...
+        at $.address to <class 'Address'>: unexpected keys: {'zip'}", ...
+        >>>
+        >>> from jsonype import FromJsonConversionError
         >>>
         >>> # JSON-types must match expected types:
+        >>> # FromJsonConversionError contains path where the error occurred.
         >>> js = loads('''{
         ...         "name": "John Doe",
         ...         "address": {
         ...             "street": "123 Maple Street",
-        ...             "city": "Any town"
-        ...         },
-        ...         "some_related_number": "5"
+        ...             "city": "Any town",
+        ...             "some_related_number": "5"
+        ...         }
         ...     }''')
         >>> try:
         ...     person = typed_json.from_json(js, Person)
-        ... except ValueError as e:
+        ... except FromJsonConversionError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-        ("Cannot convert 5 (type: <class 'str'>) to <class 'int'>", ...
-        >>>
+        ...     assert e.path == JsonPath(("address", "some_related_number"))
+        ("Cannot convert 5 (type: <class 'str'>)
+        at $.address.some_related_number to <class 'int'>", ...
         >>> # Objects can be converted to JSON
         >>> print(dumps(typed_json.to_json(person), indent=2))
         {
           "name": "John Doe",
           "address": {
             "street": "123 Maple Street",
-            "city": "Any town"
-          },
-          "some_related_number": 5
+            "city": "Any town",
+            "some_related_number": 5
+          }
         }
     """
 
@@ -121,7 +125,7 @@ class TypedJson:
     def to_json(self, o: Any) -> Json:
         """Convert the given object to a JSON-representation.
 
-        The JSON-representation can afterwards be converted to a string containing
+        The JSON-representation can afterward be converted to a string containing
         JSON by using :func:`json.dumps`.
 
         Args:
@@ -154,12 +158,20 @@ class TypedJson:
             ValueError: If the JSON-representation cannot be converted as a converter
                 fails to convert it to an object of the required type.
         """
+        return self.from_json_with_path(js, target_type, JsonPath())
+
+    def from_json_with_path(
+            self, js: Json, target_type: type[TargetType], path: JsonPath
+    ) -> TargetType:
         origin_of_generic = get_origin(target_type)
         annotations = get_annotations(target_type) if target_type else {}
+        # According to mypy the type is correct (type | None instead of ParamSpec)
+        # noinspection PyTypeChecker
         converter = next((conv for conv in self._from_json_converters if
                           conv.can_convert(target_type, origin_of_generic)),
                          None)
         if not converter:
             raise UnsupportedTargetTypeError(target_type)
         # converter can_convert from type[T] so it should return T
-        return cast(TargetType, converter.convert(js, target_type, annotations, self.from_json))
+        return cast(TargetType,
+                    converter.convert(js, target_type, path, annotations, self.from_json_with_path))

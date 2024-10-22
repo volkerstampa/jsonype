@@ -3,6 +3,7 @@ from inspect import get_annotations
 
 from pytest import fixture, raises
 
+from jsonype import JsonPath
 from jsonype.basic_from_json_converters import FromJsonConversionError
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.typed_json import TypedJson
@@ -53,8 +54,9 @@ def test_to_dataclass_convert(
     assert to_dataclass.convert(
         {**asdict(demo_dataclass), "extra": "field"},
         Demo,
+        JsonPath(),
         get_annotations(Demo),
-        typed_json.from_json
+        typed_json.from_json_with_path
     ) == demo_dataclass
 
 
@@ -72,8 +74,9 @@ def test_to_dataclass_convert_with_default(
             "extra": "field"
         },
         Demo,
+        JsonPath(),
         get_annotations(Demo),
-        typed_json.from_json
+        typed_json.from_json_with_path
     ) == demo_dataclass
 
 
@@ -84,7 +87,10 @@ def test_to_dataclass_convert_with_missing_field(
         # DataclassTarget_co is bound to a Dataclass protocol as suggested here
         # https://github.com/python/mypy/issues/6568#issuecomment-1324196557
         # noinspection PyTypeChecker
-        to_dataclass.convert({}, Demo, get_annotations(Demo), typed_json.from_json)
+        to_dataclass.convert({}, Demo, JsonPath(), get_annotations(Demo),
+                             typed_json.from_json_with_path)
+    # Demo is a Dataclass
+    # noinspection PyTypeChecker
     for field_name in (field.name for field in fields(Demo) if field.default == MISSING):
         assert field_name in str(e.value)
 
@@ -101,8 +107,9 @@ def test_to_dataclass_strict_convert_with_extra_fields(
         strict_to_dataclass.convert(
             {**asdict(demo_dataclass), "extra": "field"},
             Demo,
+            JsonPath(),
             get_annotations(Demo),
-            typed_json.from_json
+            typed_json.from_json_with_path
         )
     assert "extra" in str(e.value)
 

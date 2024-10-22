@@ -1,11 +1,11 @@
 from collections.abc import Iterable, Mapping
 from inspect import isclass
-# pyflakes wants NamedTuple to be imported as its used as bounds-parameter below
+# pyflakes wants NamedTuple to be imported as it's used as bounds-parameter below
 # noinspection PyUnresolvedReferences
 from typing import (Any, Callable, NamedTuple, Optional, Protocol, Self, TypeVar,  # noqa: W0611
                     cast, runtime_checkable)
 
-from jsonype import Json, ToJsonConverter
+from jsonype import Json, JsonPath, ToJsonConverter
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
                                                 TargetType_co)
 
@@ -55,8 +55,9 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
             self,
             js: Json,
             target_type: type[NamedTupleTarget_co],
+            path: JsonPath,
             annotations: Mapping[str, type],
-            from_json: Callable[[Json, type], TargetType_co]
+            from_json: Callable[[Json, type[TargetType_co], JsonPath], TargetType_co]
     ) -> NamedTupleTarget_co:
         def json_value_or_default(field_name: str) -> Any:
             assert isinstance(js, Mapping)
@@ -65,13 +66,15 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
             return js.get(field_name, target_type._field_defaults.get(field_name))  # noqa: W0212
 
         if not isinstance(js, Mapping):
-            raise FromJsonConversionError(js, target_type)
+            raise FromJsonConversionError(js, path, target_type)
         if self._strict and (extra_keys := js.keys() - annotations.keys()):
-            raise FromJsonConversionError(js, target_type, f"unexpected keys: {extra_keys}")
+            raise FromJsonConversionError(js, path, target_type,
+                                          f"unexpected keys: {extra_keys}")
         # _field_defaults is actually public
         # noinspection PyProtectedMember
         if missing_keys := annotations.keys() - js.keys() - target_type._field_defaults.keys():  # noqa: W0212
-            raise FromJsonConversionError(js, target_type, f"missing keys: {missing_keys}")
+            raise FromJsonConversionError(js, path, target_type,
+                                          f"missing keys: {missing_keys}")
 
         # a type-object for type T can be "called" to construct an instance
         instance_factory = cast(Callable[..., NamedTupleTarget_co], target_type)
@@ -79,7 +82,8 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
         # noinspection PyProtectedMember
         return instance_factory(
             **{field_name: from_json(json_value_or_default(field_name),
-                                     annotations.get(field_name, object))
+                                     annotations.get(field_name, object),
+                                     path.append(field_name))
                for field_name in
                target_type._fields}
         )

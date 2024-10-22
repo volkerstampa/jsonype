@@ -38,6 +38,12 @@ cache_dir = "build/.mypy_cache"
 strict = "True"
 files = "jsonype,tests"
 
+[tool.pylama.linter.pylint]
+# FromJsonConverter.convert has 6 args, one of which is self
+# still unsure how to reduce this best so relax the lint check
+max_args = 6
+max_positional_arguments = 6
+
 [tool.pydocstyle]
 ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
 
@@ -54,6 +60,10 @@ src_paths = ["jsonype", "tests"]
 disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
 ignore = ["docs"]
 recursive = true
+
+[tool.pylint.design]
+max-args = 6
+max-positional-arguments = 6
 
 [tool.radon]
 ignore = ["docs"]

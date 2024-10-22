@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
 from typing import Any, Callable, ClassVar, Optional, Protocol, TypeVar
 
+from jsonype import JsonPath
 from jsonype.base_types import Json
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,
                                                 FromJsonConverter, TargetType_co)
@@ -35,22 +36,24 @@ class ToDataclass(FromJsonConverter[DataclassTarget_co, TargetType_co]):
             self,
             js: Json,
             target_type: type[DataclassTarget_co],
+            path: JsonPath,
             annotations: Mapping[str, type],
-            from_json: Callable[[Json, type], ContainedTargetType_co]
+            from_json: Callable[[Json, type, JsonPath], ContainedTargetType_co]
     ) -> DataclassTarget_co:
         if not isinstance(js, Mapping):
-            raise FromJsonConversionError(js, target_type)
+            raise FromJsonConversionError(js, path, target_type)
         if self._strict and (extra_keys := js.keys() - annotations.keys()):
-            raise FromJsonConversionError(js, target_type, f"unexpected keys: {extra_keys}")
+            raise FromJsonConversionError(js, path, target_type,
+                                          f"unexpected keys: {extra_keys}")
         if missing_keys := {
                 field.name for field in fields(target_type)
                 if field.default == MISSING and field.default_factory == MISSING
         } - js.keys():
             raise FromJsonConversionError(
-                js, target_type, f"missing keys: {missing_keys}"
+                js, path, target_type, f"missing keys: {missing_keys}"
             )
         return target_type(**{
-            field_name: from_json(field_value, annotations[field_name])
+            field_name: from_json(field_value, annotations[field_name], path.append(field_name))
             for field_name, field_value in js.items()
             if field_name in annotations
         })

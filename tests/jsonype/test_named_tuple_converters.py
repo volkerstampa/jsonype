@@ -4,7 +4,7 @@ from typing import Any, NamedTuple
 
 from pytest import fixture, mark, raises
 
-from jsonype import TypedJson
+from jsonype import JsonPath, TypedJson
 from jsonype.basic_from_json_converters import FromJsonConversionError
 from jsonype.named_tuple_converters import ToNamedTuple
 
@@ -56,8 +56,9 @@ def test_to_named_tuple_convert(
     assert to_named_tuple.convert(
         {**demo_named_tuple._asdict(), "extra": "field"},
         Demo,
+        JsonPath(),
         get_annotations(Demo),
-        typed_json.from_json
+        typed_json.from_json_with_path
     ) == demo_named_tuple
 
 
@@ -67,8 +68,9 @@ def test_to_named_tuple_convert_with_default_value(
     assert to_named_tuple.convert(
         {"field_a": "Hello", "extra": "field"},
         Demo,
+        JsonPath(),
         get_annotations(Demo),
-        typed_json.from_json
+        typed_json.from_json_with_path
     ) == demo_named_tuple
 
 
@@ -76,7 +78,8 @@ def test_to_named_tuple_convert_with_missing_field(
         to_named_tuple: ToNamedTuple[Demo, str], typed_json: TypedJson, demo_named_tuple: Demo
 ) -> None:
     with raises(FromJsonConversionError) as e:
-        to_named_tuple.convert({}, Demo, get_annotations(Demo), typed_json.from_json)
+        to_named_tuple.convert({}, Demo, JsonPath(), get_annotations(Demo),
+                               typed_json.from_json_with_path)
     # Demo is a NamedTuple and thus has public member _field_defaults
     for missing_key in demo_named_tuple._asdict().keys() - Demo._field_defaults.keys():  # noqa: W0212, E1101
         assert missing_key in str(e.value)
@@ -91,8 +94,9 @@ def test_to_named_tuple_strict_convert_with_extra_fields(
         strict_to_named_tuple.convert(
             {**demo_named_tuple._asdict(), "extra": "field"},
             Demo,
+            JsonPath(),
             get_annotations(Demo),
-            typed_json.from_json
+            typed_json.from_json_with_path
         )
     assert "extra" in str(e.value)
 
@@ -106,6 +110,7 @@ def test_to_named_tuple_with_untyped_fields(
     assert to_untyped_named_tuple.convert(
         untyped_demo._asdict(),
         UntypedDemo,
+        JsonPath(),
         get_annotations(UntypedDemo),
-        typed_json.from_json,
+        typed_json.from_json_with_path,
     ) == untyped_demo

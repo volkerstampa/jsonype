@@ -2,6 +2,7 @@
 # so unused import are expected
 # pylint: disable=C0414
 from .base_types import Json as Json  # noqa: W0611
+from .base_types import JsonPath as JsonPath  # noqa: W0611
 
 # isort: off
 from .basic_from_json_converters import (FromJsonConversionError  # noqa: W0611

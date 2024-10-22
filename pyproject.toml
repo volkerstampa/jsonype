@@ -31,7 +31,7 @@ linters = "eradicate,mccabe,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture
 skip = "docs/*"
 
 [tool.pylama.linter.pydocstyle]
-ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
+ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
 
 [tool.pylama.linter.mypy]
 cache_dir = "build/.mypy_cache"
@@ -39,7 +39,7 @@ strict = "True"
 files = "jsonype,tests"
 
 [tool.pydocstyle]
-ignore = "D100,D101,D102,D103,D104,D107,D203,D213,D410,D411,D406,D413,D407"
+ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
 
 [tool.mypy]
 cache_dir = "build/.mypy_cache"
@@ -70,7 +70,7 @@ exclude = ["docs"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D100", "D101", "D102", "D103", "D104", "D107", "D203", "D213",
+ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D213",
     "D406", "D407", "D410", "D411", "D413",
     "ARG002",
     "ANN401",

@@ -30,7 +30,7 @@ checkGitPreconditions() {
     git fetch --prune "$repo"
     if  [ "$(git merge-base main "$repo/main")" != "$(git rev-parse "$repo/main")" ]
     then
-      echo $repo/main is ahead of main or diverged >&2
+      echo "$repo"/main is ahead of main or diverged >&2
       return 1
     fi
   done

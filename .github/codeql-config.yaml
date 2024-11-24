@@ -1,0 +1,13 @@
+query-filters:
+  - exclude:
+      # There is currently only one maintainer
+      id: CodeReviewID
+  - exclude:
+      # Having only one maintainer, branch protection does not make sense
+      id: BranchProtectionID
+  - exclude:
+      # Projects is not used enough to be accepted by OSS-Fuzz
+      id: FuzzingID
+  - exclude:
+      # Seems to be overkill atm
+      id: CIIBestPracticesID

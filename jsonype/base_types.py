@@ -1,4 +1,5 @@
-from typing import Literal, Mapping, Sequence, Union
+from collections.abc import Mapping, Sequence
+from typing import Literal, Union
 
 JsonNull = Literal[None]
 JsonSimple = Union[int, float, str, bool]

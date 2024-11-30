@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
 from inspect import get_annotations
 from json import dumps, loads
@@ -5,8 +6,7 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Callable, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple,
-                    TypeAlias, TypedDict, TypeVar, Union, cast)
+from typing import Any, Callable, NamedTuple, Optional, TypeAlias, TypedDict, TypeVar, Union, cast
 
 from pytest import mark, raises
 
@@ -233,14 +233,14 @@ def _random_untyped_list(size: int, factories: Sequence[ObjectFactory[_T]]) \
     unambiguous_factories = tuple(
         frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
     seq, _types = _random_values(size, unambiguous_factories)
-    return list(seq), List
+    return list(seq), list
 
 
 def _random_tuple(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[tuple[_T, ...], type[tuple[_T, ...]]]:
     seq, types = _random_values(size, factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast(type[tuple[_T, ...]], Tuple[*types])
+    return tuple(seq), cast(type[tuple[_T, ...]], tuple[*types])  # type: ignore[valid-type]
 
 
 def _random_tuple_with_ellipsis(size: int, factories: Sequence[ObjectFactory[_T]]) \
@@ -250,7 +250,7 @@ def _random_tuple_with_ellipsis(size: int, factories: Sequence[ObjectFactory[_T]
     seq, types = _random_values(size, unambiguous_factories)
     # tuple[*var] it interpreted as object, so it needs a cast
     return tuple(seq), cast(type[tuple[_T, ...]],
-                            Tuple[*insert_random_ellipsis(types)])
+                            tuple[*insert_random_ellipsis(types)])  # type: ignore[misc]
 
 
 def _random_map(size: int, factories: Sequence[ObjectFactory[_T]]) \

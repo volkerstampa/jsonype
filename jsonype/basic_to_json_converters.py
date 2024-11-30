@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Mapping, Sequence, TypeVar, get_args
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Generic, TypeVar, get_args
 
 from jsonype.base_types import Json, JsonNull, JsonSimple
 

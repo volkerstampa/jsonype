@@ -65,7 +65,7 @@ class TypedJson:
         ...     person = TypedJson(strict=True).from_json(js, Person)
         ... except ValueError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-        ("Cannot convert {'street': '...', ..., 'zip': 'ignored'}
+        ("Cannot convert {'street': '...', ..., 'zip': 'ignored'} (type: <class 'dict'>)
         to <class 'Address'>: unexpected keys: {'zip'}", ...
         >>>
         >>> # JSON-types must match expected types:
@@ -81,7 +81,7 @@ class TypedJson:
         ...     person = typed_json.from_json(js, Person)
         ... except ValueError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
-        ("Cannot convert 5 to <class 'int'>", ...
+        ("Cannot convert 5 (type: <class 'str'>) to <class 'int'>", ...
     """
 
     def __init__(self, strict: bool = False) -> None:

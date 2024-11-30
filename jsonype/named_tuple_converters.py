@@ -1,8 +1,9 @@
+from collections.abc import Iterable, Mapping
 from inspect import isclass
 # pyflakes wants NamedTuple to be imported as its used as bounds-parameter below
 # noinspection PyUnresolvedReferences
-from typing import (Any, Callable, Iterable, Mapping, NamedTuple, Optional, Protocol,  # noqa: W0611
-                    Self, TypeVar, cast, runtime_checkable)
+from typing import (Any, Callable, NamedTuple, Optional, Protocol, Self, TypeVar,  # noqa: W0611
+                    cast, runtime_checkable)
 
 from jsonype import Json, ToJsonConverter
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,

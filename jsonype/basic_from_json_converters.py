@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping, Sequence
 from inspect import isclass
 from types import NoneType
-from typing import (Any, Callable, Generic, Iterable, Literal, Mapping, Optional, Protocol,
-                    Sequence, TypeVar, Union, cast, get_args, runtime_checkable)
+from typing import (Any, Callable, Generic, Literal, Optional, Protocol, TypeVar, Union, cast,
+                    get_args, runtime_checkable)
 
 from jsonype.base_types import Json, JsonSimple
 
@@ -12,7 +13,8 @@ ContainedTargetType_co = TypeVar("ContainedTargetType_co", covariant=True)
 
 class FromJsonConversionError(ValueError):
     def __init__(self, js: Json, target_type: type, reason: str | None = None) -> None:
-        super().__init__(f"Cannot convert {js} to {target_type}{f': {reason}' if reason else ''}",
+        super().__init__(f"Cannot convert {js} (type: {type(js)}) "
+                         f"to {target_type}{f': {reason}' if reason else ''}",
                          js, target_type)
 
 
@@ -273,7 +275,9 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_co]):
     """
 
     def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
-        return isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Mapping)
+        return ((isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Mapping))
+                or (isclass(target_type) and issubclass(target_type, Mapping)
+                    and not isinstance(target_type, HasRequiredKeys)))
 
     def convert(
             self,
@@ -325,7 +329,8 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_c
         self.strict = strict
 
     def can_convert(self, target_type: type, origin_of_generic: Optional[type]) -> bool:
-        return isclass(target_type) and issubclass(target_type, Mapping)
+        return (isclass(target_type) and issubclass(target_type, Mapping)
+                and isinstance(target_type, HasRequiredKeys))
 
     def convert(
             self,

@@ -1,7 +1,10 @@
 Changelog
 =========
 
-## next
+## 0.4.0
+
+- Include path info in FromJsonConverionError to refer to the part of the JSON document 
+  that couldn't be converted.
 
 ## 0.3.1
 

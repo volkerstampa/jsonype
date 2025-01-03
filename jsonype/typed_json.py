@@ -28,8 +28,10 @@ class TypedJson:
         >>> from jsonype import TypedJson, FromJsonConversionError, JsonPath
         >>> from json import dumps, loads
         >>>
+        >>> # Create TypedJson instance
         >>> typed_json = TypedJson()
         >>>
+        >>> # Define your types with type-hints
         >>> class Address(NamedTuple):
         ...     street: str
         ...     city: str
@@ -40,6 +42,7 @@ class TypedJson:
         ...     name: str
         ...     address: Address
         >>>
+        >>> # Parse JSON string with python's json package
         >>> js = loads('''{
         ...         "name": "John Doe",
         ...         "address": {
@@ -49,6 +52,7 @@ class TypedJson:
         ...             "zip": "ignored"
         ...         }
         ...     }''')
+        >>> # convert generic representation to your type
         >>> person = typed_json.from_json(js, Person)
         >>>
         >>> assert person == Person(
@@ -87,7 +91,7 @@ class TypedJson:
         ...     assert e.path == JsonPath(("address", "some_related_number"))
         ("Cannot convert 5 (type: <class 'str'>)
         at $.address.some_related_number to <class 'int'>", ...
-        >>> # Objects can be converted to JSON
+        >>> # Convert typed objects to JSON
         >>> print(dumps(typed_json.to_json(person), indent=2))
         {
           "name": "John Doe",

@@ -14,15 +14,17 @@ type if possible (i.e. a suitable converter is available).
 This is most useful when the given type contains type-hints such that this type-based conversion can be applied
 (possibly recursively) for the individual components of the initial type.
 
-Getting Started
----------------
+Install
+-------
 
 Add ``jsonype`` to your dependencies or install with pip::
 
    pip install jsonype
 
-For details on how to use it see :class:`jsonype.TypedJson`.
+Usage
+-----
 
+For details on how to use it see :class:`jsonype.TypedJson`.
 
 
 Indices and tables

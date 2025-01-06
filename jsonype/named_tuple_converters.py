@@ -2,10 +2,10 @@ from collections.abc import Iterable, Mapping
 from inspect import isclass
 # pyflakes wants NamedTuple to be imported as it's used as bounds-parameter below
 # noinspection PyUnresolvedReferences
-from typing import (Any, Callable, NamedTuple, Optional, Protocol, Self, TypeVar,  # noqa: W0611
-                    cast, runtime_checkable)
+from typing import (Any, Callable, NamedTuple, Protocol, Self, TypeVar, cast,  # noqa: W0611
+                    runtime_checkable)
 
-from jsonype import Json, JsonPath, ToJsonConverter
+from jsonype import Json, JsonPath, ParameterizedTypeInfo, ToJsonConverter
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
                                                 TargetType_co)
 
@@ -48,44 +48,49 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
     def __init__(self, strict: bool = False) -> None:
         self._strict = strict
 
-    def can_convert(self, target_type: type, _origin_of_generic: Optional[type]) -> bool:
-        return isclass(target_type) and issubclass(target_type, _NamedTupleProtocol)
+    def can_convert(
+            self, _js: Json, target_type_info: ParameterizedTypeInfo[Any]
+    ) -> bool:
+        return (isclass(target_type_info.full_type)
+                and issubclass(target_type_info.full_type, _NamedTupleProtocol))
 
     def convert(
             self,
             js: Json,
-            target_type: type[NamedTupleTarget_co],
+            target_type_info: ParameterizedTypeInfo[NamedTupleTarget_co],
             path: JsonPath,
-            annotations: Mapping[str, type],
             from_json: Callable[[Json, type[TargetType_co], JsonPath], TargetType_co]
     ) -> NamedTupleTarget_co:
         def json_value_or_default(field_name: str) -> Any:
             assert isinstance(js, Mapping)
             # _field_defaults is actually public
             # noinspection PyProtectedMember
-            return js.get(field_name, target_type._field_defaults.get(field_name))  # noqa: W0212
+            return js.get(field_name,
+                          target_type_info.full_type._field_defaults.get(field_name))  # noqa: W0212
 
         if not isinstance(js, Mapping):
-            raise FromJsonConversionError(js, path, target_type)
-        if self._strict and (extra_keys := js.keys() - annotations.keys()):
-            raise FromJsonConversionError(js, path, target_type,
+            raise FromJsonConversionError(js, path, target_type_info.full_type)
+        if self._strict and (extra_keys := js.keys() - target_type_info.annotations.keys()):
+            raise FromJsonConversionError(js, path, target_type_info.full_type,
                                           f"unexpected keys: {extra_keys}")
         # _field_defaults is actually public
         # noinspection PyProtectedMember
-        if missing_keys := annotations.keys() - js.keys() - target_type._field_defaults.keys():  # noqa: W0212
-            raise FromJsonConversionError(js, path, target_type,
+        if missing_keys := (target_type_info.annotations.keys()
+                            - js.keys()
+                            - target_type_info.full_type._field_defaults.keys()):  # noqa: W0212
+            raise FromJsonConversionError(js, path, target_type_info.full_type,
                                           f"missing keys: {missing_keys}")
 
         # a type-object for type T can be "called" to construct an instance
-        instance_factory = cast(Callable[..., NamedTupleTarget_co], target_type)
+        instance_factory = cast(Callable[..., NamedTupleTarget_co], target_type_info.full_type)
         # NamedTuple._fields is public
         # noinspection PyProtectedMember
         return instance_factory(
             **{field_name: from_json(json_value_or_default(field_name),
-                                     annotations.get(field_name, object),
+                                     target_type_info.annotations.get(field_name, object),
                                      path.append(field_name))
                for field_name in
-               target_type._fields}
+               target_type_info.full_type._fields}
         )
 
 

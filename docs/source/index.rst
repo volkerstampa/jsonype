@@ -24,8 +24,32 @@ Add ``jsonype`` to your dependencies or install with pip::
 Usage
 -----
 
-For details on how to use it see :class:`jsonype.TypedJson`.
+Conversion of *standard* types like :func:`dataclasses.dataclass` or :class:`typing.NamedTuple`
+works out of the box:
 
+.. literalinclude:: ../../jsonype/typed_json.py
+    :dedent:
+    :language: python
+    :start-after: Example: TypedJson
+    :end-before: """
+
+For custom types you can register custom converters:
+
+.. literalinclude:: ../../jsonype/typed_json.py
+    :dedent:
+    :language: python
+    :start-after: Example append:
+    :end-before: """
+
+Custom converters can also take precedence over existing ones by prepending:
+
+.. literalinclude:: ../../jsonype/typed_json.py
+    :dedent:
+    :language: python
+    :start-after: Example prepend:
+    :end-before: """
+
+See :class:`jsonype.TypedJson` for more details on the API.
 
 Indices and tables
 ==================

@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
-from typing import Any, Callable, ClassVar, Optional, Protocol, TypeVar
+from typing import Any, Callable, ClassVar, Protocol, TypeVar
 
-from jsonype import JsonPath
+from jsonype import JsonPath, ParameterizedTypeInfo
 from jsonype.base_types import Json
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,
                                                 FromJsonConverter, TargetType_co)
@@ -29,33 +29,36 @@ class ToDataclass(FromJsonConverter[DataclassTarget_co, TargetType_co]):
     def __init__(self, strict: bool = False) -> None:
         self._strict = strict
 
-    def can_convert(self, target_type: type, _origin_of_generic: Optional[type]) -> bool:
-        return is_dataclass(target_type)
+    def can_convert(
+            self, _js: Json, target_type_info: ParameterizedTypeInfo[Any]
+    ) -> bool:
+        return is_dataclass(target_type_info.full_type)
 
     def convert(
             self,
             js: Json,
-            target_type: type[DataclassTarget_co],
+            target_type_info: ParameterizedTypeInfo[DataclassTarget_co],
             path: JsonPath,
-            annotations: Mapping[str, type],
             from_json: Callable[[Json, type, JsonPath], ContainedTargetType_co]
     ) -> DataclassTarget_co:
         if not isinstance(js, Mapping):
-            raise FromJsonConversionError(js, path, target_type)
-        if self._strict and (extra_keys := js.keys() - annotations.keys()):
-            raise FromJsonConversionError(js, path, target_type,
+            raise FromJsonConversionError(js, path, target_type_info.full_type)
+        if self._strict and (extra_keys := js.keys() - target_type_info.annotations.keys()):
+            raise FromJsonConversionError(js, path, target_type_info.full_type,
                                           f"unexpected keys: {extra_keys}")
         if missing_keys := {
-                field.name for field in fields(target_type)
+                field.name for field in fields(target_type_info.full_type)
                 if field.default == MISSING and field.default_factory == MISSING
         } - js.keys():
             raise FromJsonConversionError(
-                js, path, target_type, f"missing keys: {missing_keys}"
+                js, path, target_type_info.full_type, f"missing keys: {missing_keys}"
             )
-        return target_type(**{
-            field_name: from_json(field_value, annotations[field_name], path.append(field_name))
+        return target_type_info.full_type(**{
+            field_name: from_json(field_value,
+                                  target_type_info.annotations[field_name],
+                                  path.append(field_name))
             for field_name, field_value in js.items()
-            if field_name in annotations
+            if field_name in target_type_info.annotations
         })
 
 

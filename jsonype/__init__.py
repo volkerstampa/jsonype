@@ -9,6 +9,11 @@ from .basic_from_json_converters import (FromJsonConversionError  # noqa: W0611
                                          as FromJsonConversionError)
 # isort: on
 from .basic_from_json_converters import FromJsonConverter as FromJsonConverter  # noqa: W0611
+
+# isort: off
+from .basic_from_json_converters import (ParameterizedTypeInfo  # noqa: W0611
+                                         as ParameterizedTypeInfo)
+# isort: on
 from .basic_from_json_converters import ToAny as ToAny  # noqa: W0611
 from .basic_from_json_converters import ToList as ToList  # noqa: W0611
 from .basic_from_json_converters import ToLiteral as ToLiteral  # noqa: W0611
@@ -18,11 +23,6 @@ from .basic_from_json_converters import ToSimple as ToSimple  # noqa: W0611
 from .basic_from_json_converters import ToTuple as ToTuple  # noqa: W0611
 from .basic_from_json_converters import ToTypedMapping as ToTypedMapping  # noqa: W0611
 from .basic_from_json_converters import ToUnion as ToUnion  # noqa: W0611
-
-# isort: off
-from .basic_from_json_converters import (UnsupportedTargetTypeError  # noqa: W0611
-                                         as UnsupportedTargetTypeError)
-# isort: on
 from .basic_to_json_converters import FromMapping as FromMapping  # noqa: W0611
 from .basic_to_json_converters import FromNone as FromNone  # noqa: W0611
 from .basic_to_json_converters import FromSequence as FromSequence  # noqa: W0611

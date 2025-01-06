@@ -1,10 +1,11 @@
-from inspect import get_annotations
-from typing import Any, TypeVar, cast, get_origin
+from collections.abc import Sequence
+from typing import Any, TypeVar, cast
 
+from jsonype import FromJsonConversionError
 from jsonype.base_types import Json, JsonPath
-from jsonype.basic_from_json_converters import (FromJsonConverter, ToAny, ToList, ToLiteral,
-                                                ToMapping, ToNone, ToSimple, ToTuple,
-                                                ToTypedMapping, ToUnion, UnsupportedTargetTypeError)
+from jsonype.basic_from_json_converters import (FromJsonConverter, ParameterizedTypeInfo, ToAny,
+                                                ToList, ToLiteral, ToMapping, ToNone, ToSimple,
+                                                ToTuple, ToTypedMapping, ToUnion)
 from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
                                               ToJsonConverter, UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
@@ -22,14 +23,14 @@ class TypedJson:
             often for example when extra fields are in the JSON-representation that do not
             exist in the target-type.
 
-    Example:
+    Example: TypedJson
         >>> from dataclasses import dataclass
         >>> from typing import NamedTuple
         >>> from jsonype import TypedJson, FromJsonConversionError, JsonPath
         >>> from json import dumps, loads
         >>>
         >>> # Create TypedJson instance
-        >>> typed_json = TypedJson()
+        >>> typed_json = TypedJson.default()
         >>>
         >>> # Define your types with type-hints
         >>> class Address(NamedTuple):
@@ -66,13 +67,11 @@ class TypedJson:
         >>>
         >>> try:
         ...     # strict conversion does not accept extra fields in the JSON-object
-        ...     person = TypedJson(strict=True).from_json(js, Person)
+        ...     person = TypedJson.default(strict=True).from_json(js, Person)
         ... except FromJsonConversionError as e:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ("Cannot convert {'street': '...', ..., 'zip': 'ignored'} (type: <class 'dict'>)
         at $.address to <class 'Address'>: unexpected keys: {'zip'}", ...
-        >>>
-        >>> from jsonype import FromJsonConversionError
         >>>
         >>> # JSON-types must match expected types:
         >>> # FromJsonConversionError contains path where the error occurred.
@@ -90,7 +89,7 @@ class TypedJson:
         ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
         ...     assert e.path == JsonPath(("address", "some_related_number"))
         ("Cannot convert 5 (type: <class 'str'>)
-        at $.address.some_related_number to <class 'int'>", ...
+        at $.address.some_related_number to <class 'int'>...", ...
         >>> # Convert typed objects to JSON
         >>> print(dumps(typed_json.to_json(person), indent=2))
         {
@@ -103,28 +102,10 @@ class TypedJson:
         }
     """
 
-    def __init__(self, strict: bool = False) -> None:
-        self._from_json_converters: tuple[FromJsonConverter[Any, Any], ...] = (
-            ToAny(),
-            ToUnion(),
-            ToLiteral(),
-            ToNone(),
-            ToSimple(),
-            ToNamedTuple(strict),
-            ToDataclass(),
-            ToTuple(),
-            ToList(),
-            ToMapping(),
-            ToTypedMapping(strict),
-        )
-        self._to_json_converters: tuple[ToJsonConverter[Any], ...] = (
-            FromNone(),
-            FromSimple(),
-            FromNamedTuple(),
-            FromDataclass(),
-            FromSequence(),
-            FromMapping(),
-        )
+    def __init__(self, from_json_converters: Sequence[FromJsonConverter[Any, Any]],
+                 to_json_converters: Sequence[ToJsonConverter[Any]]) -> None:
+        self._from_json_converters = from_json_converters
+        self._to_json_converters = to_json_converters
 
     def to_json(self, o: Any) -> Json:
         """Convert the given object to a JSON-representation.
@@ -167,15 +148,183 @@ class TypedJson:
     def from_json_with_path(
             self, js: Json, target_type: type[TargetType], path: JsonPath
     ) -> TargetType:
-        origin_of_generic = get_origin(target_type)
-        annotations = get_annotations(target_type) if target_type else {}
+        target_type_info = ParameterizedTypeInfo.from_optionally_generic(target_type)
         # According to mypy the type is correct (type | None instead of ParamSpec)
         # noinspection PyTypeChecker
         converter = next((conv for conv in self._from_json_converters if
-                          conv.can_convert(target_type, origin_of_generic)),
+                          conv.can_convert(js, target_type_info)),
                          None)
         if not converter:
-            raise UnsupportedTargetTypeError(target_type)
+            raise FromJsonConversionError(
+                js, path, target_type,
+                reason="No suitable converter registered. Use TypedJson.append "
+                       "or TypedJson.prepend to register one."
+            )
         # converter can_convert from type[T] so it should return T
         return cast(TargetType,
-                    converter.convert(js, target_type, path, annotations, self.from_json_with_path))
+                    converter.convert(js, target_type_info, path, self.from_json_with_path))
+
+    @staticmethod
+    def default_converters(
+            strict: bool = False
+    ) -> tuple[Sequence[FromJsonConverter[Any, Any]], Sequence[ToJsonConverter[Any]]]:
+        return (
+            (
+                ToAny(),
+                ToUnion(),
+                ToLiteral(),
+                ToNone(),
+                ToSimple(),
+                ToNamedTuple(strict),
+                ToDataclass(),
+                ToTuple(),
+                ToList(),
+                ToTypedMapping(strict),
+                ToMapping(),
+            ),
+            (
+                FromNone(),
+                FromSimple(),
+                FromNamedTuple(),
+                FromDataclass(),
+                FromSequence(),
+                FromMapping(),
+            )
+        )
+
+    @classmethod
+    def default(cls, strict: bool = False) -> "TypedJson":
+        """Create a ``TypedJson`` instance with reasonable default converters.
+
+        Next to straight forward converters for simple types (``str, bool, ...``) and
+        simple collections (``list, tuple, Mapping``) the converters support the following
+        conversions:
+        - :class:`dataclasses.dataclass` to/from ``dict``
+        - :class:`typing.NamedTuple` to/from ``dict``
+
+        Args:
+            strict: Some of the converters support a strict-mode. For example the converters
+                converting to a ``dataclass`` or a ``NamedTuple`` fail in struct mode if the
+                JSON object contains additional keys.
+        """
+        return cls(*TypedJson.default_converters(strict))
+
+    def prepend(self, from_json_converters: Sequence[FromJsonConverter[Any, Any]],
+                to_json_converters: Sequence[ToJsonConverter[Any]]) -> "TypedJson":
+        """Return a new ``TypedJson`` with the given converters prepended to the existing ones.
+
+        Prepended converters take precedence over existing ones, i.e. if a prepended converter
+        converts the same types as an existing one (but differently), the existing one becomes
+        ineffective. In case of a ``FromJsonConverter`` both input and output types are considered.
+
+        Args:
+            from_json_converters: a list of ``FromJsonConverter`` that are added to the top of the
+                list of all ``FromJsonConverter``.
+            to_json_converters: a list of ``ToJsonConverter`` that are added to the top of the
+                list of all ``ToJsonConverter``.
+
+        Example prepend:
+            >>> from dataclasses import dataclass
+            >>> from typing import Callable, Any
+            >>> from jsonype import TypedJson, ToJsonConverter
+            >>> from json import dumps
+            >>>
+            >>> class Password(str):
+            ...     pass
+            >>>
+            >>> @dataclass
+            ... class Person:
+            ...     name: str
+            ...     pwd: Password
+            >>>
+            >>> person = Person("John Doe", Password("secret"))
+            >>>
+            >>> typed_json = TypedJson.default()
+            >>> # The secret is revealed
+            >>> print(dumps(typed_json.to_json(person)))
+            {"name": "John Doe", "pwd": "secret"}
+            >>> # A custom converter can prevent revealing Password types
+            >>> class PasswordToString(ToJsonConverter[str]):
+            ...     def can_convert(self, o: Any)-> bool:
+            ...         return isinstance(o, Password)
+            ...
+            ...     def convert(self, o: Password, to_json: Callable[[Any], Json])-> Json:
+            ...         return "***"
+            >>>
+            >>> # Since a Password is also a str the new converter needs to take precedence over
+            >>> # the existing converter for str, that is why it is prepended.
+            >>> typed_json = typed_json.prepend([], [PasswordToString()])
+            >>> print(dumps(typed_json.to_json(person)))
+            {"name": "John Doe", "pwd": "***"}
+        """
+        return TypedJson([*from_json_converters, *self._from_json_converters],
+                         [*to_json_converters, *self._to_json_converters])
+
+    def append(self, from_json_converters: Sequence[FromJsonConverter[Any, Any]],
+               to_json_converters: Sequence[ToJsonConverter[Any]]) -> "TypedJson":
+        """Return a new ``TypedJson`` with the given converters appended to the existing ones.
+
+        Existing converters take precedence over appended ones,  i.e. if an appended converter
+        converts the same types as an existing one (but differently), the appended one becomes
+        ineffective.
+
+        Args:
+            from_json_converters: a list of ``FromJsonConverter`` that are added to the top of the
+                list of all ``FromJsonConverter``.
+            to_json_converters: a list of ``ToJsonConverter`` that are added to the top of the
+                list of all ``ToJsonConverter``.
+
+        Example append:
+            >>> from dataclasses import dataclass
+            >>> from typing import Callable, Any
+            >>> from jsonype import (TypedJson, FromJsonConversionError, FromJsonConverter,
+            ...     JsonPath, Json, ParameterizedTypeInfo)
+            >>> from json import dumps, loads
+            >>>
+            >>> # A custom type that needs a custom converter
+            >>> class CustomType:
+            ...     def __eq__(self, other: Any) -> bool:
+            ...         return type(other) == CustomType
+            >>>
+            >>> @dataclass
+            ... class Person:
+            ...     name: str
+            ...     something_special: CustomType
+            >>>
+            >>> js = loads('''{
+            ...     "name": "John Doe",
+            ...     "something_special": "CustomType"
+            ... }''')
+            >>> typed_json = TypedJson.default()
+            >>> # Without custom converter the conversion fails
+            >>> try:
+            ...     person = typed_json.from_json(js, Person)
+            ... except FromJsonConversionError as e:
+            ...     print(e)  # doctest: +ELLIPSIS, +NORMALIZE_WHITESPACE
+            ("Cannot convert CustomType (type: <class 'str'>) at $.something_special
+            to <class 'CustomType'>: No suitable converter registered.
+            Use TypedJson.append or TypedJson.prepend to register one.", ...
+            >>> # Let's write a custom converter that can convert the String "CustomType" to
+            >>> # an instance of the CustomType ...
+            >>> class StringToCustomType(FromJsonConverter[CustomType, None]):
+            ...
+            ...     def can_convert(
+            ...         self, js: Json, target_type_info: ParameterizedTypeInfo[Any]
+            ...     ) -> bool:
+            ...         return (js == CustomType.__name__
+            ...             and target_type_info.full_type is CustomType)
+            ...
+            ...     def convert(self, js: Json, target_type_info: ParameterizedTypeInfo[CustomType],
+            ...         path: JsonPath,
+            ...         from_json: Callable[[Json, type[None], JsonPath],
+            ...         None]
+            ...     ) -> CustomType:
+            ...         return CustomType()
+            >>>
+            >>> # ... and create a new TypedJson instance with the converter appended.
+            >>> typed_json = typed_json.append([StringToCustomType()], [])
+            >>> person = typed_json.from_json(js, Person)
+            >>> assert person == Person("John Doe", CustomType())
+        """
+        return TypedJson([*self._from_json_converters, *from_json_converters],
+                         [*self._to_json_converters, *to_json_converters])

@@ -1,9 +1,8 @@
 from dataclasses import MISSING, asdict, dataclass, fields
-from inspect import get_annotations
 
 from pytest import fixture, raises
 
-from jsonype import JsonPath
+from jsonype import JsonPath, ParameterizedTypeInfo
 from jsonype.basic_from_json_converters import FromJsonConversionError
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.typed_json import TypedJson
@@ -35,34 +34,43 @@ def fixture_demo_dataclass() -> Demo:
     return Demo("Hello")
 
 
-def test_to_dataclass_can_convert_with_dataclass(to_dataclass: ToDataclass[Demo, str]) -> None:
-    assert to_dataclass.can_convert(Demo, None)
+@fixture(name="demo_info")
+def fixture_demo_info() -> ParameterizedTypeInfo[Demo]:
+    # Correct according to mypy
+    # noinspection PyTypeChecker
+    return ParameterizedTypeInfo.from_optionally_generic(Demo)
+
+
+def test_to_dataclass_can_convert_with_dataclass(to_dataclass: ToDataclass[Demo, str],
+                                                 demo_info: ParameterizedTypeInfo[Demo]) -> None:
+    assert to_dataclass.can_convert(None, demo_info)
 
 
 def test_to_dataclass_can_convert_with_non_dataclass(
     to_dataclass: ToDataclass[Demo, str]
 ) -> None:
-    assert not to_dataclass.can_convert(str, None)
+    assert not to_dataclass.can_convert(None, ParameterizedTypeInfo.from_optionally_generic(str))
 
 
-def test_to_dataclass_convert(
-    to_dataclass: ToDataclass[Demo, str], demo_dataclass: Demo, typed_json: TypedJson
-) -> None:
+def test_to_dataclass_convert(to_dataclass: ToDataclass[Demo, str],
+                              demo_dataclass: Demo,
+                              typed_json: TypedJson,
+                              demo_info: ParameterizedTypeInfo[Demo]) -> None:
     # DataclassTarget_co is bound to a Dataclass protocol as suggested here
     # https://github.com/python/mypy/issues/6568#issuecomment-1324196557
     # noinspection PyTypeChecker
     assert to_dataclass.convert(
         {**asdict(demo_dataclass), "extra": "field"},
-        Demo,
+        demo_info,
         JsonPath(),
-        get_annotations(Demo),
         typed_json.from_json_with_path
     ) == demo_dataclass
 
 
-def test_to_dataclass_convert_with_default(
-    to_dataclass: ToDataclass[Demo, str], demo_dataclass: Demo, typed_json: TypedJson
-) -> None:
+def test_to_dataclass_convert_with_default(to_dataclass: ToDataclass[Demo, str],
+                                           demo_dataclass: Demo,
+                                           typed_json: TypedJson,
+                                           demo_info: ParameterizedTypeInfo[Demo]) -> None:
     # DataclassTarget_co is bound to a Dataclass protocol as suggested here
     # https://github.com/python/mypy/issues/6568#issuecomment-1324196557
     # noinspection PyTypeChecker
@@ -73,22 +81,20 @@ def test_to_dataclass_convert_with_default(
                if field.default == MISSING},
             "extra": "field"
         },
-        Demo,
+        demo_info,
         JsonPath(),
-        get_annotations(Demo),
         typed_json.from_json_with_path
     ) == demo_dataclass
 
 
-def test_to_dataclass_convert_with_missing_field(
-        to_dataclass: ToDataclass[Demo, str], typed_json: TypedJson
-) -> None:
+def test_to_dataclass_convert_with_missing_field(to_dataclass: ToDataclass[Demo, str],
+                                                 typed_json: TypedJson,
+                                                 demo_info: ParameterizedTypeInfo[Demo]) -> None:
     with raises(FromJsonConversionError) as e:
         # DataclassTarget_co is bound to a Dataclass protocol as suggested here
         # https://github.com/python/mypy/issues/6568#issuecomment-1324196557
         # noinspection PyTypeChecker
-        to_dataclass.convert({}, Demo, JsonPath(), get_annotations(Demo),
-                             typed_json.from_json_with_path)
+        to_dataclass.convert({}, demo_info, JsonPath(), typed_json.from_json_with_path)
     # Demo is a Dataclass
     # noinspection PyTypeChecker
     for field_name in (field.name for field in fields(Demo) if field.default == MISSING):
@@ -99,6 +105,7 @@ def test_to_dataclass_strict_convert_with_extra_fields(
         strict_to_dataclass: ToDataclass[Demo, str],
         demo_dataclass: Demo,
         typed_json: TypedJson,
+        demo_info: ParameterizedTypeInfo[Demo]
 ) -> None:
     with raises(FromJsonConversionError) as e:
         # DataclassTarget_co is bound to a Dataclass protocol as suggested here
@@ -106,9 +113,8 @@ def test_to_dataclass_strict_convert_with_extra_fields(
         # noinspection PyTypeChecker
         strict_to_dataclass.convert(
             {**asdict(demo_dataclass), "extra": "field"},
-            Demo,
+            demo_info,
             JsonPath(),
-            get_annotations(Demo),
             typed_json.from_json_with_path
         )
     assert "extra" in str(e.value)

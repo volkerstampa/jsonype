@@ -378,6 +378,7 @@ version = "1.15.0"
 description = "Optional static typing for Python"
 optional = false
 python-versions = ">=3.9"
+groups = ["dev"]
 files = [
     {file = "mypy-1.15.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:979e4e1a006511dacf628e36fadfecbcc0160a8af6ca7dad2f5025529e082c13"},
     {file = "mypy-1.15.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c4bb0e1bd29f7d34efcccd71cf733580191e9a264a2202b0239da95984c5b559"},

@@ -5,9 +5,9 @@ from jsonype import TypedJson
 
 @fixture
 def typed_json() -> TypedJson:
-    return TypedJson()
+    return TypedJson.default()
 
 
 @fixture
 def strict_typed_json() -> TypedJson:
-    return TypedJson(strict=True)
+    return TypedJson.default(strict=True)

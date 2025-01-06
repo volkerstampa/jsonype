@@ -13,7 +13,9 @@ from typing import (Any, Callable, NamedTuple, Optional, TypeAlias, TypedDict, T
 from _pytest.main import Failed
 from pytest import fail, mark, raises
 
-from jsonype import FromJsonConversionError, Json, JsonPath, TypedJson
+from jsonype import (FromJsonConversionError, FromJsonConverter, Json, JsonPath,
+                     ParameterizedTypeInfo, ToJsonConverter, TypedJson)
+from jsonype.basic_to_json_converters import SourceType_contra
 from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
 
@@ -22,8 +24,8 @@ _T = TypeVar("_T")
 
 ObjectFactory: TypeAlias = Callable[[int, Sequence["ObjectFactory[_T]"]], tuple[_T, type[_T]]]
 
-typed_json = TypedJson()
-strict_typed_json = TypedJson(strict=True)
+typed_json = TypedJson.default()
+strict_typed_json = TypedJson.default(strict=True)
 
 
 @mark.parametrize(
@@ -39,6 +41,12 @@ def test_simple_with_union_type(simple_obj: Union[int, str, None]) -> None:
     # Union is a type-special-form so cast to type explicitly
     assert_can_convert_from_to_json(
         simple_obj, cast(type[Optional[Union[int, str]]], Optional[Union[int, str]]))
+
+
+@mark.parametrize("simple_obj", [0, "Hello", None])
+def test_simple_with_union_type_new_syntax(simple_obj: int | str | None) -> None:
+    assert_can_convert_from_to_json(
+        simple_obj, cast(type[int | str | None], int | str | None))
 
 
 def test_str_with_int() -> None:
@@ -79,6 +87,14 @@ def test_empty_tuple() -> None:
     assert_can_convert_from_to_json((), tuple[()])
 
 
+def test_tuple_with_multiple_ellipsis() -> None:
+    with raises(FromJsonConversionError) as e:
+        # disable type-check to test edge case
+        typed_json.from_json([1], tuple[int, ..., ...])  # type: ignore[misc]
+
+    assert "No suitable converter registered" in str(e.value)
+
+
 @mark.parametrize(
     ("m", "ty"),
     [({"k1": 1}, int), ({"k1": True, "k2": False}, bool), ({"k1": None}, NoneType)],
@@ -89,6 +105,13 @@ def test_homogeneous_mapping(m: Mapping[str, Any], ty: TypeAlias) -> None:
 
 def test_inhomogeneous_mapping() -> None:
     assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, dict[str, Union[int, str]])
+
+
+def test_mapping_with_non_str_keys() -> None:
+    with raises(FromJsonConversionError) as e:
+        typed_json.from_json({"k1": 1}, dict[int, int])
+
+    assert "No suitable converter registered" in str(e.value)
 
 
 def test_typed_dict_relaxed() -> None:
@@ -139,6 +162,86 @@ def test_dataclass() -> None:
         sub: SubDemo
 
     assert_can_convert_from_to_json(Demo(SubDemo("Hello")), Demo)
+
+
+def test_with_prepended_custom_from_converter() -> None:
+    tj = typed_json.prepend([_StringToFloat()], [])
+
+    float_list: Sequence[str | float] = ["1.0", 2.0]
+    result = tj.from_json(float_list, list[float | str])
+
+    # StringToFloat has precedence over str to str
+    assert result == [float(s) for s in float_list]
+
+
+def test_with_prepended_custom_to_converter() -> None:
+    tj = typed_json.prepend([], [_FloatToString()])
+
+    float_list = [1.0, "2.0"]
+    result = tj.to_json(float_list)
+
+    # FloatToStr has precedence over float to float
+    assert result == [str(f) for f in float_list]
+
+
+def test_with_appended_custom_from_converter_where_other_converter_exists() -> None:
+    tj = typed_json.append([_StringToFloat()], [])
+
+    float_list: Sequence[str | float] = ["1.0", 2.0]
+    result = tj.from_json(float_list, list[float | str])
+
+    assert result == float_list
+
+
+def test_with_appended_custom_to_converter_where_other_converter_exists() -> None:
+    tj = typed_json.append([], [_FloatToString()])
+
+    float_list = [1.0, "2.0"]
+    result = tj.to_json(float_list)
+
+    assert result == float_list
+
+
+def test_with_appended_from_converter_for_custom_type() -> None:
+    # enough for testing
+    class MyType:  # noqa: R0903
+        pass
+
+    class StringToMyType(FromJsonConverter[MyType, None]):
+
+        def can_convert(self, js: Json, target_type_info: ParameterizedTypeInfo[Any]) -> bool:
+            return js == MyType.__name__ and target_type_info.full_type is MyType
+
+        def convert(self, js: Json, target_type_info: ParameterizedTypeInfo[MyType],
+                    path: JsonPath,
+                    from_json: Callable[[Json, type[None], JsonPath],
+                    None]) -> MyType:
+            return MyType()
+
+    tj = typed_json.append([StringToMyType()], [])
+    assert isinstance(tj.from_json(MyType.__name__, MyType), MyType)
+
+
+def test_with_appended_to_converter_for_custom_type() -> None:
+    # enough for testing
+    class MyType:  # noqa: R0903
+        pass
+
+    class MyTypeToString(ToJsonConverter[MyType]):
+        def can_convert(self, o: Any) -> bool:
+            return isinstance(o, MyType)
+
+        def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+            return MyType.__name__
+
+    tj = typed_json.append([], [MyTypeToString()])
+    assert tj.to_json(MyType()) == MyType.__name__
+
+
+def test_with_no_suitable_from_converter() -> None:
+    with raises(FromJsonConversionError) as e:
+        TypedJson([], []).from_json(42, int)
+    assert "No suitable converter registered" in str(e.value)
 
 
 def test_error_contains_path_at_root() -> None:
@@ -234,6 +337,8 @@ def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonCo
 
 # Should be easy enough to read despite the many returns
 # return early if condition on type is met.
+# correct according to mypy
+# noinspection PyTypeChecker
 def _json_with_error(  # noqa: R901, PLR0911
         js: Json, path: JsonPath, ty: type
 ) -> tuple[Json, FromJsonConversionError]:
@@ -553,3 +658,26 @@ def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
         tuple(zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
               cannot_convert_to_previous_type(val)))))
     return value_and_types or ((), ())
+
+
+class _StringToFloat(FromJsonConverter[float, None]):
+
+    def can_convert(
+            self, js: Json, target_type_info: ParameterizedTypeInfo[float]) -> bool:
+        return isinstance(js, str) and issubclass(float, target_type_info.full_type)
+
+    def convert(self, js: Json, target_type_info: ParameterizedTypeInfo[float], path: JsonPath,
+                from_json: Callable[[Json, type[None], JsonPath], None]) -> float:
+        if isinstance(js, str):
+            return float(js)
+        raise FromJsonConversionError(js, path, target_type_info.full_type,
+                                      "Can only convert str to float")
+
+
+class _FloatToString(ToJsonConverter[float]):
+
+    def can_convert(self, o: Any) -> bool:
+        return isinstance(o, float)
+
+    def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+        return str(o)

@@ -305,6 +305,8 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_co]):
     def can_convert(self, target_type: type, origin_of_generic: type | None) -> bool:
         return ((isclass(origin_of_generic) and issubclass(cast(type, origin_of_generic), Mapping))
                 or (isclass(target_type) and issubclass(target_type, Mapping)
+                    # prevent that TypedDicts are converted as the returned dict would not
+                    # comply with the types.
                     and not isinstance(target_type, HasRequiredKeys)))
 
     def convert(

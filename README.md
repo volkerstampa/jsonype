@@ -32,6 +32,7 @@ See [documentation](https://jsonype.readthedocs.io).
 ```bash
 poetry self add poetry-setuptools-scm-plugin@latest
 poetry install
+poetry self add poetry-plugin-shell # only required for poetry >= 2
 poetry shell
 ```
 

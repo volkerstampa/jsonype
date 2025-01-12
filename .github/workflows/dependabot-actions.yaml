@@ -17,4 +17,9 @@ jobs:
       - run: gh pr merge --auto --rebase "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
+          # To support updating versions of github-actions a personal access token is needed
+          # See: https://stackoverflow.com/a/66644086
+          # In GitHub settings (Security -> Secrets and variables) this token needs to be configured for
+          # - Actions and
+          # - Dependabot
           GH_TOKEN: ${{secrets.WORKFLOW_TOKEN}}

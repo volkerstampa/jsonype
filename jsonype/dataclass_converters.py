@@ -20,7 +20,7 @@ DataclassTarget_contra = TypeVar("DataclassTarget_contra",
 
 
 class ToDataclass(FromJsonConverter[DataclassTarget_co, TargetType_co]):
-    """Convert an object representing JSON to a :class:`dataclasses.dataclass`.
+    """Convert an object representing JSON to a :func:`dataclasses.dataclass`.
 
     The JSON object is expected to have keys corresponding to the fields of the dataclass.
     Each value is converted to the corresponding field type.
@@ -63,7 +63,7 @@ class ToDataclass(FromJsonConverter[DataclassTarget_co, TargetType_co]):
 
 
 class FromDataclass(ToJsonConverter[DataclassTarget_contra]):
-    """Converts objects of :class:`dataclasses.dataclass`.
+    """Converts objects of :func:`dataclasses.dataclass`.
 
     A dataclass is converted to a ``dict`` with keys corresponding to the
     fields of the dataclass and values being converted with their respective

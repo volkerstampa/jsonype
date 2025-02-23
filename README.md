@@ -2,7 +2,7 @@
 
 ## Usage
 
-See [documentation](https://jsonype.readthedocs.io).
+See [documentation](https://jsonype.readthedocs.io/v0.5.0/).
 
 ## Similar tools
 

@@ -1,7 +1,7 @@
 Changelog
 =========
 
-## next
+## 0.5.0
 
 - Add support for custom converters. You can now create a new TypedJson instance from an existing one
   by pre- or appending the list of converts with custom ones.

@@ -1,18 +1,20 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from inspect import get_annotations, isclass
+from datetime import datetime
+from inspect import Parameter, Signature, get_annotations, isclass, signature
 from types import NoneType, UnionType
 from typing import (Any, Callable, Generic, Literal, Protocol, TypeVar, Union, cast, get_args,
                     runtime_checkable)
 
 from typing_extensions import get_origin
 
-from jsonype import JsonPath
-from jsonype.base_types import Json, JsonSimple
+from jsonype import Json, JsonPath
+from jsonype.base_types import JsonSimple
 
 TargetType_co = TypeVar("TargetType_co", covariant=True)
 ContainedTargetType_co = TypeVar("ContainedTargetType_co", covariant=True)
+JsonType_contra = TypeVar("JsonType_contra", bound=JsonSimple, contravariant=True)
 
 
 class FromJsonConversionError(ValueError):
@@ -112,6 +114,47 @@ class FromJsonConverter(ABC, Generic[TargetType_co, ContainedTargetType_co]):
             ValueError: If the JSON-representation cannot be converted an instance of
                 ``target_type``.
         """
+
+
+class FunctionBasedFromSimpleJsonConverter(FromJsonConverter[TargetType_co, None]):
+
+    def __init__(self,
+                 f: Callable[[JsonType_contra], TargetType_co],
+                 input_type: type[JsonType_contra] | None = None,
+                 output_type: type[TargetType_co] | None = None) -> None:
+        self._f = f
+
+        if input_type:
+            self._input_type = input_type
+        if output_type:
+            self._output_type = output_type
+        if input_type and output_type:
+            return
+        sig = signature(f)
+        if not input_type:
+            assert len(sig.parameters) == 1
+            input_parameter = next(iter(sig.parameters.values()))
+            assert input_parameter.annotation != Parameter.empty
+            self._input_type = input_parameter.annotation
+        if not output_type:
+            assert sig.return_annotation != Signature.empty
+            self._output_type = sig.return_annotation
+
+    def can_convert(self, js: Json, target_type_info: ParameterizedTypeInfo[Any]) -> bool:
+        return isinstance(js, self._input_type) and target_type_info.full_type == self._output_type
+
+    def convert(self,
+                js: Json,
+                target_type_info: ParameterizedTypeInfo[TargetType_co],
+                path: JsonPath,
+                _from_json: Callable[
+                    [Json, type[ContainedTargetType_co], JsonPath], ContainedTargetType_co
+                ]) -> TargetType_co:
+        try:
+            assert isinstance(js, self._input_type)
+            return self._f(js)
+        except ValueError as e:
+            raise FromJsonConversionError(js, path, datetime, str(e)) from e
 
 
 class ToAny(FromJsonConverter[Any, None]):

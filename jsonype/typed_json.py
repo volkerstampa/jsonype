@@ -10,6 +10,7 @@ from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequenc
                                               ToJsonConverter, UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
+from jsonype.time_converters import FromDatetime, ToDatetime
 
 TargetType = TypeVar("TargetType")
 
@@ -174,6 +175,7 @@ class TypedJson:
                 ToUnion(),
                 ToLiteral(),
                 ToNone(),
+                ToDatetime(),
                 ToSimple(),
                 ToNamedTuple(strict),
                 ToDataclass(),
@@ -184,6 +186,7 @@ class TypedJson:
             ),
             (
                 FromNone(),
+                FromDatetime(),
                 FromSimple(),
                 FromNamedTuple(),
                 FromDataclass(),
@@ -199,8 +202,32 @@ class TypedJson:
         Next to straight forward converters for simple types (``str, bool, ...``) and
         simple collections (``list, tuple, Mapping``) the converters support the following
         conversions:
+
         - :class:`dataclasses.dataclass` to/from ``dict``
         - :class:`typing.NamedTuple` to/from ``dict``
+        - :class:`datetime.datetime` to/from ``str``
+
+        The full list of converters is:
+
+        - :class:`ToAny`
+        - :class:`ToUnion`,
+        - :class:`ToLiteral`,
+        - :class:`ToNone`,
+        - :class:`ToDatetime`,
+        - :class:`ToSimple`,
+        - :class:`ToNamedTuple`,
+        - :class:`ToDataclass`,
+        - :class:`ToTuple`,
+        - :class:`ToList`,
+        - :class:`ToTypedMapping`,
+        - :class:`ToMapping`,
+        - :class:`FromNone`,
+        - :class:`FromDatetime`,
+        - :class:`FromSimple`,
+        - :class:`FromNamedTuple`,
+        - :class:`FromDataclass`,
+        - :class:`FromSequence`,
+        - :class:`FromMapping`,
 
         Args:
             strict: Some of the converters support a strict-mode. For example the converters

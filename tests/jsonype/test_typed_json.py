@@ -1,5 +1,6 @@
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from inspect import get_annotations, isclass
 from json import dumps, loads
@@ -33,6 +34,14 @@ strict_typed_json = TypedJson.default(strict=True)
     [0, -1, 2, 0.0, 1.0, -2.0, True, False, "Hello", "", None],
 )
 def test_simple(simple_obj: Any) -> None:
+    assert_can_convert_from_to_json(simple_obj, type(simple_obj))
+
+
+@mark.parametrize(
+    "simple_obj",
+    [datetime.now(timezone.utc)],
+)
+def test_simple_conversions(simple_obj: Any) -> None:
     assert_can_convert_from_to_json(simple_obj, type(simple_obj))
 
 
@@ -345,6 +354,8 @@ def _json_with_error(  # noqa: R901, PLR0911
     origin = get_origin(ty)
     if ty is str:
         return _str_with_error(path, ty)
+    if ty is datetime:
+        return _datetime_with_error(path, ty)
     if ty in {None, int, float, bool}:
         return _non_str_primitive_with_error(path, ty)
     if origin is None:
@@ -370,6 +381,11 @@ def _non_str_primitive_with_error(path: JsonPath, ty: type) -> tuple[str, FromJs
 
 def _str_with_error(path: JsonPath, ty: type) -> tuple[str | int, FromJsonConversionError]:
     erroneous_js: str | int = 42
+    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
+
+
+def _datetime_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
+    erroneous_js: str = "42"
     return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
 
 
@@ -456,6 +472,8 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_tuple_with_ellipsis,
             _random_untyped_list,
             _random_untyped_map,
+            # a str-datetime is not converted to datetime if contained in an untyped collection
+            _random_datetime,
             _random_named_tuple,
             _random_dataclass)
 
@@ -503,9 +521,27 @@ def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[st
     return "".join(choices(printable, k=randrange(size))), str
 
 
-def _random_sequence(size: int, factories: Sequence[ObjectFactory[_T]]) \
+def _random_datetime(
+        _size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[datetime, type[datetime]]:
+    min_datetime = datetime.min.replace(tzinfo=timezone.utc)
+    max_datetime = datetime.max.replace(tzinfo=timezone.utc)
+    # conversion to from float with (from)timestamp() is not precise due to rounding errors
+    # so shift max by 1ms to prevent ValueErrors
+    max_datetime_adjusted = datetime.max.replace(tzinfo=timezone(timedelta(milliseconds=1)))
+    result = choices([min_datetime,
+                      uniform(min_datetime.timestamp(), max_datetime_adjusted.timestamp()),
+                      max_datetime],
+                     weights=[1, 5, 1])[0]
+    if isinstance(result, float):
+        result = datetime.fromtimestamp(result, tz=timezone.utc)
+    assert isinstance(result, datetime)
+    return result, datetime
+
+
+def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Sequence[_T], type[Sequence[_T]]]:
-    seq, types = _random_values(size, factories)
+    seq, types = _random_values(size, _unambiguous_types_factories())
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
@@ -565,7 +601,7 @@ def _random_tuple_with_ellipsis(
 
 def _random_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Mapping[str, _T], type[Mapping[str, _T]]]:
-    vals, types = _random_values(size, factories)
+    vals, types = _random_values(size, _unambiguous_types_factories())
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise value_types is not a valid type
     # noinspection PyTypeHints

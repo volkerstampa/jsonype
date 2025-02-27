@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
+from inspect import Parameter, signature
 from typing import Any, Callable, Generic, TypeVar, get_args
 
 from jsonype.base_types import Json, JsonNull, JsonSimple
 
 SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
+JsonType_co = TypeVar("JsonType_co", bound=JsonSimple, covariant=True)
 
 
 class ToJsonConversionError(ValueError):
@@ -53,6 +55,28 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
         Raises:
             ValueError: If the object cannot be converted to an object representing JSON.
         """
+
+
+class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
+
+    def __init__(self,
+                 f: Callable[[SourceType_contra], JsonType_co],
+                 input_type: type[SourceType_contra] | None = None) -> None:
+        self._f = f
+        if input_type:
+            self._input_type = input_type
+            return
+        sig = signature(f)
+        assert len(sig.parameters) == 1
+        input_parameter = next(iter(sig.parameters.values()))
+        assert input_parameter.annotation != Parameter.empty
+        self._input_type = input_parameter.annotation
+
+    def can_convert(self, o: Any) -> bool:
+        return isinstance(o, self._input_type)
+
+    def convert(self, o: SourceType_contra, _to_json: Callable[[Any], Json]) -> Json:
+        return self._f(o)
 
 
 class FromNone(ToJsonConverter[JsonNull]):

@@ -32,6 +32,8 @@ from .dataclass_converters import FromDataclass as FromDataclass  # noqa: W0611
 from .dataclass_converters import ToDataclass as ToDataclass  # noqa: W0611
 from .named_tuple_converters import FromNamedTuple as FromNamedTuple  # noqa: W0611
 from .named_tuple_converters import ToNamedTuple as ToNamedTuple  # noqa: W0611
+from .time_converters import FromDatetime as FromDatetime  # noqa: W0611
+from .time_converters import ToDatetime as ToDatetime  # noqa: W0611
 from .typed_json import TypedJson as TypedJson  # noqa: W0611
 
 __all__ = [symbol for symbol in dir() if symbol and symbol[0].isupper()]

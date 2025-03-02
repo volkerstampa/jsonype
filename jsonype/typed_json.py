@@ -10,7 +10,7 @@ from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequenc
                                               ToJsonConverter, UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
-from jsonype.time_converters import FromDatetime, ToDatetime
+from jsonype.time_converters import FromDate, FromDatetime, ToDate, ToDatetime
 
 TargetType = TypeVar("TargetType")
 
@@ -176,6 +176,7 @@ class TypedJson:
                 ToLiteral(),
                 ToNone(),
                 ToDatetime(),
+                ToDate(),
                 ToSimple(),
                 ToNamedTuple(strict),
                 ToDataclass(),
@@ -187,6 +188,7 @@ class TypedJson:
             (
                 FromNone(),
                 FromDatetime(),
+                FromDate(),
                 FromSimple(),
                 FromNamedTuple(),
                 FromDataclass(),
@@ -205,7 +207,7 @@ class TypedJson:
 
         - :class:`dataclasses.dataclass` to/from ``dict``
         - :class:`typing.NamedTuple` to/from ``dict``
-        - :class:`datetime.datetime` to/from ``str``
+        - various time-related types like :class:`datetime.datetime` to/from ``str``
 
         The full list of converters is:
 
@@ -214,6 +216,7 @@ class TypedJson:
         - :class:`ToLiteral`,
         - :class:`ToNone`,
         - :class:`ToDatetime`,
+        - :class:`ToDate`,
         - :class:`ToSimple`,
         - :class:`ToNamedTuple`,
         - :class:`ToDataclass`,
@@ -223,6 +226,7 @@ class TypedJson:
         - :class:`ToMapping`,
         - :class:`FromNone`,
         - :class:`FromDatetime`,
+        - :class:`FromDate`,
         - :class:`FromSimple`,
         - :class:`FromNamedTuple`,
         - :class:`FromDataclass`,

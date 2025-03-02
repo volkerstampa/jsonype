@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from inspect import Parameter, Signature, get_annotations, isclass, signature
 from types import NoneType, UnionType
 from typing import (Any, Callable, Generic, Literal, Protocol, TypeVar, Union, cast, get_args,
@@ -141,7 +140,7 @@ class FunctionBasedFromSimpleJsonConverter(FromJsonConverter[TargetType_co, None
             self._output_type = sig.return_annotation
 
     def can_convert(self, js: Json, target_type_info: ParameterizedTypeInfo[Any]) -> bool:
-        return isinstance(js, self._input_type) and target_type_info.full_type == self._output_type
+        return isinstance(js, self._input_type) and target_type_info.full_type is self._output_type
 
     def convert(self,
                 js: Json,
@@ -154,7 +153,7 @@ class FunctionBasedFromSimpleJsonConverter(FromJsonConverter[TargetType_co, None
             assert isinstance(js, self._input_type)
             return self._f(js)
         except ValueError as e:
-            raise FromJsonConversionError(js, path, datetime, str(e)) from e
+            raise FromJsonConversionError(js, path, self._output_type, str(e)) from e
 
 
 class ToAny(FromJsonConverter[Any, None]):

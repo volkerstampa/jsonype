@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import partial
 from inspect import get_annotations, isclass
 from json import dumps, loads
@@ -39,7 +39,7 @@ def test_simple(simple_obj: Any) -> None:
 
 @mark.parametrize(
     "simple_obj",
-    [datetime.now(timezone.utc)],
+    [datetime.now(timezone.utc), datetime.now(timezone.utc).date()],
 )
 def test_simple_conversions(simple_obj: Any) -> None:
     assert_can_convert_from_to_json(simple_obj, type(simple_obj))
@@ -348,7 +348,7 @@ def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonCo
 # return early if condition on type is met.
 # correct according to mypy
 # noinspection PyTypeChecker
-def _json_with_error(  # noqa: R901, PLR0911
+def _json_with_error(  # noqa: R901, PLR0911, C901
         js: Json, path: JsonPath, ty: type
 ) -> tuple[Json, FromJsonConversionError]:
     origin = get_origin(ty)
@@ -356,6 +356,8 @@ def _json_with_error(  # noqa: R901, PLR0911
         return _str_with_error(path, ty)
     if ty is datetime:
         return _datetime_with_error(path, ty)
+    if ty is date:
+        return _date_with_error(path, ty)
     if ty in {None, int, float, bool}:
         return _non_str_primitive_with_error(path, ty)
     if origin is None:
@@ -385,6 +387,11 @@ def _str_with_error(path: JsonPath, ty: type) -> tuple[str | int, FromJsonConver
 
 
 def _datetime_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
+    erroneous_js: str = "42"
+    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
+
+
+def _date_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
     erroneous_js: str = "42"
     return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
 
@@ -474,6 +481,7 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_untyped_map,
             # a str-datetime is not converted to datetime if contained in an untyped collection
             _random_datetime,
+            _random_date,
             _random_named_tuple,
             _random_dataclass)
 
@@ -537,6 +545,16 @@ def _random_datetime(
         result = datetime.fromtimestamp(result, tz=timezone.utc)
     assert isinstance(result, datetime)
     return result, datetime
+
+
+def _random_date(
+        _size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[date, type[date]]:
+    result = choices([date.min.toordinal(),
+                      randint(date.min.toordinal(), date.max.toordinal()),
+                      date.max.toordinal()],
+                     weights=[1, 5, 1])[0]
+    return date.fromordinal(result), date
 
 
 def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \

@@ -40,13 +40,13 @@ def test_simple(simple_obj: Any) -> None:
 def test_simple_with_union_type(simple_obj: Union[int, str, None]) -> None:
     # Union is a type-special-form so cast to type explicitly
     assert_can_convert_from_to_json(
-        simple_obj, cast(type[Optional[Union[int, str]]], Optional[Union[int, str]]))
+        simple_obj, cast("type[Optional[Union[int, str]]]", Optional[Union[int, str]]))
 
 
 @mark.parametrize("simple_obj", [0, "Hello", None])
 def test_simple_with_union_type_new_syntax(simple_obj: int | str | None) -> None:
     assert_can_convert_from_to_json(
-        simple_obj, cast(type[int | str | None], int | str | None))
+        simple_obj, cast("type[int | str | None]", int | str | None))
 
 
 def test_str_with_int() -> None:
@@ -310,7 +310,7 @@ def assert_can_convert_from_to_json_relaxed(inp: Any, expected: Any, ty: type[_T
 
 def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonConversionError]:
     random_tuple_with_ellipsis_not_at_first_pos = cast(
-        ObjectFactory[tuple[Any]],
+        "ObjectFactory[tuple[Any]]",
         partial(
             _random_tuple_with_ellipsis,
             insert_random_ellipsis=partial(_insert_random_ellipsis,
@@ -329,7 +329,7 @@ def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonCo
         # 1. generate ellipsis only after the first element and 2. replace always the first element
         - {_none, _random_sequence, _random_map, _random_tuple_with_ellipsis}
     )
-    obj, ty = cast(tuple[object, type], _random_typed_object(size, factories))
+    obj, ty = cast("tuple[object, type]", _random_typed_object(size, factories))
     js = typed_json.to_json(obj)
     js, error = _json_with_error(js, JsonPath(), ty)
     return ty, js, error
@@ -509,7 +509,7 @@ def _random_sequence(size: int, factories: Sequence[ObjectFactory[_T]]) \
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
-    element_type: TypeAlias = cast(type, Union[*types] if seq else Any)
+    element_type: TypeAlias = cast("type", Union[*types] if seq else Any)
     return list(seq), Sequence[element_type]
 
 
@@ -519,7 +519,7 @@ def _random_homogeneous_sequence(size: int, factories: Sequence[ObjectFactory[_T
     # Union[types[0]] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
-    element_type: TypeAlias = cast(type, Union[types[0]] if seq else Any)
+    element_type: TypeAlias = cast("type", Union[types[0]] if seq else Any)
     return [e for e, ty in zip(seq, types) if ty == types[0]], Sequence[element_type]
 
 
@@ -535,7 +535,7 @@ def _random_tuple(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[tuple[_T, ...], type[tuple[_T, ...]]]:
     seq, types = _random_values(size, factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast(type[tuple[_T, ...]], tuple[*types])  # type: ignore[valid-type]
+    return tuple(seq), cast("type[tuple[_T, ...]]", tuple[*types])  # type: ignore[valid-type]
 
 
 def _insert_random_ellipsis(types: Sequence[type], allow_ellipsis_at_first_pos: bool = True) \
@@ -559,7 +559,7 @@ def _random_tuple_with_ellipsis(
         frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
     seq, types = _random_values(size, unambiguous_factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast(type[tuple[_T, ...]],
+    return tuple(seq), cast("type[tuple[_T, ...]]",
                             tuple[*insert_random_ellipsis(types)])  # type: ignore[misc]
 
 
@@ -569,7 +569,7 @@ def _random_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise value_types is not a valid type
     # noinspection PyTypeHints
-    value_types: TypeAlias = cast(type, Union[*types] if vals else Any)
+    value_types: TypeAlias = cast("type", Union[*types] if vals else Any)
     return ({_random_str(size, factories)[0]: val for val in vals},
             Mapping[str, value_types])
 
@@ -580,7 +580,7 @@ def _random_homogeneous_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
-    value_type: TypeAlias = cast(type, Union[types[0]] if vals else Any)
+    value_type: TypeAlias = cast("type", Union[types[0]] if vals else Any)
     return ({_random_str(size, factories)[0]: val
              for val, ty in zip(vals, types) if ty == types[0]},
             Mapping[str, value_type])
@@ -611,7 +611,7 @@ def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
     keys = [_random_symbol() for _ in vals]
     # Functional syntax to construct NamedTuple classes -> _make exists
     namedtuple_type = \
-        cast(type[NamedTupleTarget_co], NamedTuple(_random_symbol(), list(zip(keys, types))))
+        cast("type[NamedTupleTarget_co]", NamedTuple(_random_symbol(), list(zip(keys, types))))
     # _make is actually public
     # noinspection PyProtectedMember
     return namedtuple_type._make(vals), namedtuple_type  # noqa: E1101
@@ -654,7 +654,7 @@ def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
     # zip is an Iterable which has only a single type-parameter (i.e. must be homogeneous)
     # but when some (Any, type) tuples are zipped we do get a ([Any], [type])
     value_and_types = cast(
-        tuple[Sequence[_T], Sequence[type[_T]]],
+        "tuple[Sequence[_T], Sequence[type[_T]]]",
         tuple(zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
               cannot_convert_to_previous_type(val)))))
     return value_and_types or ((), ())

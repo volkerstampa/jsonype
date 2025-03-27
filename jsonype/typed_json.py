@@ -161,7 +161,7 @@ class TypedJson:
                        "or TypedJson.prepend to register one."
             )
         # converter can_convert from type[T] so it should return T
-        return cast(TargetType,
+        return cast("TargetType",
                     converter.convert(js, target_type_info, path, self.from_json_with_path))
 
     @staticmethod

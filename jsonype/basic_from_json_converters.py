@@ -121,7 +121,8 @@ class ToAny(FromJsonConverter[Any, None]):
     """
 
     def can_convert(self, _js: Json, target_type_info: ParameterizedTypeInfo[Any]) -> bool:
-        return target_type_info.full_type is cast(type, Any) or target_type_info.full_type is object
+        return (target_type_info.full_type is cast("type", Any)
+                or target_type_info.full_type is object)
 
     def convert(self,
                 js: Json,
@@ -148,7 +149,7 @@ class ToUnion(FromJsonConverter[TargetType_co, TargetType_co]):
             self, _js: Json, target_type_info: ParameterizedTypeInfo[Any]
     ) -> bool:
         # Union is a type-special-form and thus cannot be compared to a type
-        return target_type_info.origin_of_generic in [cast(type, Union), UnionType]
+        return target_type_info.origin_of_generic in [cast("type", Union), UnionType]
 
     def convert(
             self,
@@ -175,7 +176,7 @@ class ToUnion(FromJsonConverter[TargetType_co, TargetType_co]):
             )
         # here we know that one conversion was successful. As we only convert into the
         # type-parameters of the Union the returned result must be of the Union-type
-        return cast(TargetType_co, res_or_failures)
+        return cast("TargetType_co", res_or_failures)
 
 
 class ToLiteral(FromJsonConverter[TargetType_co, None]):
@@ -192,7 +193,7 @@ class ToLiteral(FromJsonConverter[TargetType_co, None]):
     ) -> bool:
         # Literal is a type-special-form and thus cannot be compared to a type
         # generic args of Literal are instances
-        return (target_type_info.origin_of_generic is cast(type, Literal)
+        return (target_type_info.origin_of_generic is cast("type", Literal)
                 and js in target_type_info.generic_args)  # type: ignore[comparison-overlap]
 
     def convert(self,
@@ -200,7 +201,7 @@ class ToLiteral(FromJsonConverter[TargetType_co, None]):
                 target_type_info: ParameterizedTypeInfo[TargetType_co],
                 path: JsonPath,
                 from_json: Callable[[Json, type[None], JsonPath], None]) -> TargetType_co:
-        return cast(TargetType_co, js)
+        return cast("TargetType_co", js)
 
 
 class ToNone(FromJsonConverter[None, None]):
@@ -295,7 +296,7 @@ class ToList(FromJsonConverter[Sequence[TargetType_co], TargetType_co]):
     ) -> bool:
         # either a parameterized Sequence-type with exactly one type parameter
         return (((isclass(target_type_info.origin_of_generic)
-                  and issubclass(cast(type, target_type_info.origin_of_generic), Sequence)
+                  and issubclass(cast("type", target_type_info.origin_of_generic), Sequence)
                   and target_type_info.generic_args
                   and len(target_type_info.generic_args) == 1)
                  # or a non-parameterized list-type
@@ -331,7 +332,7 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_co]):
     ) -> bool:
         # Either a parameterized Mapping-type with str as key
         return (((isclass(target_type_info.origin_of_generic)
-                  and issubclass(cast(type, target_type_info.origin_of_generic), Mapping)
+                  and issubclass(cast("type", target_type_info.origin_of_generic), Mapping)
                   and target_type_info.generic_args
                   and target_type_info.generic_args[0] is str)
                  # or a non-parameterized Mapping-type
@@ -353,7 +354,7 @@ class ToMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_co]):
         _, value_type = key_value_types
         assert isinstance(js, Mapping)
         # value_type of a Mapping[str, TargetType] is type[TargetType]
-        return {k: from_json(v, cast(type[TargetType_co], value_type), path.append(k))
+        return {k: from_json(v, cast("type[TargetType_co]", value_type), path.append(k))
                 for k, v in js.items()}
 
 
@@ -410,7 +411,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_c
             if t:
                 # target_type_info.full_type is a Mapping[str, TargetType_co] so the
                 # annotations of the TypedDict must be of type TargetType_co
-                return cast(type[TargetType_co], t)
+                return cast("type[TargetType_co]", t)
             raise FromJsonConversionError(js, path, target_type_info.full_type, f"Unknown key: {k}")
 
         assert isinstance(js, Mapping)
@@ -422,7 +423,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_c
         raise FromJsonConversionError(
             js,
             path,
-            cast(type, target_type_info),
+            cast("type", target_type_info),
             f"Required key missing: {target_type_info.full_type.__required_keys__}"
         )
 

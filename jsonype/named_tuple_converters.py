@@ -82,7 +82,7 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
                                           f"missing keys: {missing_keys}")
 
         # a type-object for type T can be "called" to construct an instance
-        instance_factory = cast(Callable[..., NamedTupleTarget_co], target_type_info.full_type)
+        instance_factory = cast("Callable[..., NamedTupleTarget_co]", target_type_info.full_type)
         # NamedTuple._fields is public
         # noinspection PyProtectedMember
         return instance_factory(

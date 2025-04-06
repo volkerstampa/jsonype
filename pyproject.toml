@@ -84,6 +84,8 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D213"
     "I001",
     "PT013",
     "PYI042"]
+# pylint: E, R, pyflakes: W, vulture: V
+external = ["E", "R", "W", "V"]
 
 [tool.pytest.ini_options]
 cache_dir = "build/pytest_cache"

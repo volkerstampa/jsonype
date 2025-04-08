@@ -32,6 +32,14 @@ from .dataclass_converters import FromDataclass as FromDataclass  # noqa: W0611
 from .dataclass_converters import ToDataclass as ToDataclass  # noqa: W0611
 from .named_tuple_converters import FromNamedTuple as FromNamedTuple  # noqa: W0611
 from .named_tuple_converters import ToNamedTuple as ToNamedTuple  # noqa: W0611
+from .simple_str_based_converters import FromBytes as FromBytes  # noqa: W0611
+from .simple_str_based_converters import FromPath as FromPath  # noqa: W0611
+from .simple_str_based_converters import FromUrl as FromUrl  # noqa: W0611
+from .simple_str_based_converters import FromUUID as FromUUID  # noqa: W0611
+from .simple_str_based_converters import ToBytes as ToBytes  # noqa: W0611
+from .simple_str_based_converters import ToPath as ToPath  # noqa: W0611
+from .simple_str_based_converters import ToUrl as ToUrl  # noqa: W0611
+from .simple_str_based_converters import ToUUID as ToUUID  # noqa: W0611
 from .time_converters import FromDate as FromDate  # noqa: W0611
 from .time_converters import FromDatetime as FromDatetime  # noqa: W0611
 from .time_converters import FromTime as FromTime  # noqa: W0611

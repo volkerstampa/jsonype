@@ -4,12 +4,15 @@ from datetime import date, datetime, time, timedelta, timezone
 from functools import partial
 from inspect import get_annotations, isclass
 from json import dumps, loads
+from pathlib import Path
 from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
 from typing import (Any, Callable, NamedTuple, Optional, TypeAlias, TypedDict, TypeVar, Union, cast,
                     get_args, get_origin)
+from urllib.parse import SplitResult, urlsplit
+from uuid import UUID, uuid4
 
 from _pytest.main import Failed
 from pytest import fail, mark, raises
@@ -38,13 +41,17 @@ def test_simple(simple_obj: Any) -> None:
 
 
 @mark.parametrize(
-    "simple_obj",
-    [datetime.now(timezone.utc),
-     datetime.now(timezone.utc).date(),
-     datetime.now(timezone.utc).time()],
+    ("simple_obj", "ty"),
+    [(datetime.now(timezone.utc), datetime),
+     (datetime.now(timezone.utc).date(), date),
+     (datetime.now(timezone.utc).time(), time),
+     (uuid4(), UUID),
+     (Path.cwd(), Path),
+     (urlsplit("scheme://netloc/path?query#fragment"), SplitResult),
+     (bytes([0, 1, 2]), bytes)],
 )
-def test_simple_conversions(simple_obj: Any) -> None:
-    assert_can_convert_from_to_json(simple_obj, type(simple_obj))
+def test_simple_conversions(simple_obj: Any, ty: type[_T]) -> None:
+    assert_can_convert_from_to_json(simple_obj, ty)
 
 
 @mark.parametrize("simple_obj", [0, "Hello", None])
@@ -356,10 +363,10 @@ def _json_with_error(  # noqa: R901, PLR0911, C901
     origin = get_origin(ty)
     if ty is str:
         return _str_with_error(path, ty)
-    if ty in {None, int, float, bool, datetime, date, time}:
+    if ty in {None, int}:
         return _non_str_simple_with_error(path, ty)
     if origin is None:
-        return _untyped_collection_with_error(path, ty)
+        return _unparameterized_with_error(path, ty)
     if isclass(origin) and issubclass(origin, tuple):
         return _tuple_with_error(js, path, ty)
     if isclass(origin) and issubclass(origin, Sequence):
@@ -384,22 +391,7 @@ def _str_with_error(path: JsonPath, ty: type) -> tuple[str | int, FromJsonConver
     return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
 
 
-def _datetime_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
-    erroneous_js: str = "42"
-    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
-
-
-def _date_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
-    erroneous_js: str = "42"
-    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
-
-
-def _time_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
-    erroneous_js: str = "42"
-    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
-
-
-def _untyped_collection_with_error(
+def _unparameterized_with_error(
         path: JsonPath, ty: type
 ) -> tuple[str | int, FromJsonConversionError]:
     erroneous_js: str | int = 42
@@ -486,6 +478,10 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_datetime,
             _random_date,
             _random_time,
+            _random_uuid,
+            _random_path,
+            _random_bytes,
+            _random_url,
             _random_named_tuple,
             _random_dataclass)
 
@@ -572,6 +568,33 @@ def _random_time(
                       time.max],
                      weights=[1, 5, 1])[0]
     return result, time
+
+
+def _random_uuid(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[UUID, type[UUID]]:
+    return uuid4(), UUID
+
+
+def _random_path(size: int, factories: Sequence[ObjectFactory[Any]]) -> tuple[Path, type[Path]]:
+    segments = (_random_str(size, factories)[0] for _ in range(randint(1, size)))
+    return Path().joinpath(*segments), Path
+
+
+def _random_bytes(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[bytes, type[bytes]]:
+    return bytes(randint(0, 255) for _ in range(randint(1, size))), bytes
+
+
+def _random_url(size: int,
+                _factories: Sequence[ObjectFactory[Any]]) -> tuple[SplitResult, type[SplitResult]]:
+    def random_ascii_str() -> str:
+        return "".join(choices(ascii_letters, k=randrange(size)))
+
+    # inspection is wrong
+    # noinspection PyArgumentList
+    return SplitResult(scheme=random_ascii_str().lower(),
+                       netloc=random_ascii_str(),
+                       path=f"/{random_ascii_str()}",
+                       query=random_ascii_str(),
+                       fragment=random_ascii_str()), SplitResult
 
 
 def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \

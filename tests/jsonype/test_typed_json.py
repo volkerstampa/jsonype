@@ -356,14 +356,8 @@ def _json_with_error(  # noqa: R901, PLR0911, C901
     origin = get_origin(ty)
     if ty is str:
         return _str_with_error(path, ty)
-    if ty is datetime:
-        return _datetime_with_error(path, ty)
-    if ty is date:
-        return _date_with_error(path, ty)
-    if ty is time:
-        return _time_with_error(path, ty)
-    if ty in {None, int, float, bool}:
-        return _non_str_primitive_with_error(path, ty)
+    if ty in {None, int, float, bool, datetime, date, time}:
+        return _non_str_simple_with_error(path, ty)
     if origin is None:
         return _untyped_collection_with_error(path, ty)
     if isclass(origin) and issubclass(origin, tuple):
@@ -380,7 +374,7 @@ def _json_with_error(  # noqa: R901, PLR0911, C901
     fail(f"Unexpected type: {ty} (origin: {origin})")
 
 
-def _non_str_primitive_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
+def _non_str_simple_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
     erroneous_js = "42"
     return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
 

@@ -10,7 +10,7 @@ from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequenc
                                               ToJsonConverter, UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
-from jsonype.time_converters import FromDate, FromDatetime, ToDate, ToDatetime
+from jsonype.time_converters import FromDate, FromDatetime, FromTime, ToDate, ToDatetime, ToTime
 
 TargetType = TypeVar("TargetType")
 
@@ -177,6 +177,7 @@ class TypedJson:
                 ToNone(),
                 ToDatetime(),
                 ToDate(),
+                ToTime(),
                 ToSimple(),
                 ToNamedTuple(strict),
                 ToDataclass(),
@@ -189,6 +190,7 @@ class TypedJson:
                 FromNone(),
                 FromDatetime(),
                 FromDate(),
+                FromTime(),
                 FromSimple(),
                 FromNamedTuple(),
                 FromDataclass(),

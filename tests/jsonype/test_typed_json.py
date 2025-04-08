@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from functools import partial
 from inspect import get_annotations, isclass
 from json import dumps, loads
@@ -39,7 +39,9 @@ def test_simple(simple_obj: Any) -> None:
 
 @mark.parametrize(
     "simple_obj",
-    [datetime.now(timezone.utc), datetime.now(timezone.utc).date()],
+    [datetime.now(timezone.utc),
+     datetime.now(timezone.utc).date(),
+     datetime.now(timezone.utc).time()],
 )
 def test_simple_conversions(simple_obj: Any) -> None:
     assert_can_convert_from_to_json(simple_obj, type(simple_obj))
@@ -358,6 +360,8 @@ def _json_with_error(  # noqa: R901, PLR0911, C901
         return _datetime_with_error(path, ty)
     if ty is date:
         return _date_with_error(path, ty)
+    if ty is time:
+        return _time_with_error(path, ty)
     if ty in {None, int, float, bool}:
         return _non_str_primitive_with_error(path, ty)
     if origin is None:
@@ -392,6 +396,11 @@ def _datetime_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConvers
 
 
 def _date_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
+    erroneous_js: str = "42"
+    return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
+
+
+def _time_with_error(path: JsonPath, ty: type) -> tuple[str, FromJsonConversionError]:
     erroneous_js: str = "42"
     return erroneous_js, FromJsonConversionError(erroneous_js, path, ty)
 
@@ -482,6 +491,7 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             # a str-datetime is not converted to datetime if contained in an untyped collection
             _random_datetime,
             _random_date,
+            _random_time,
             _random_named_tuple,
             _random_dataclass)
 
@@ -555,6 +565,19 @@ def _random_date(
                       date.max.toordinal()],
                      weights=[1, 5, 1])[0]
     return date.fromordinal(result), date
+
+
+def _random_time(
+        _size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[time, type[time]]:
+    result = choices([time.min,
+                      time(hour=randrange(24),
+                           minute=randrange(60),
+                           second=randrange(60),
+                           microsecond=randrange(1000000)),
+                      time.max],
+                     weights=[1, 5, 1])[0]
+    return result, time
 
 
 def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \

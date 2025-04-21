@@ -116,6 +116,40 @@ class FromJsonConverter(ABC, Generic[TargetType_co, ContainedTargetType_co]):
 
 
 class FunctionBasedFromSimpleJsonConverter(FromJsonConverter[TargetType_co, None]):
+    """A function based :class:`FromJsonConverter`.
+
+    Creates a ``FromJsonConverter`` from a function that maps a simple JSON type to a target type.
+
+    Args:
+        f: A function that maps a simple JSON type (int, float, str, bool) into a target type.
+        input_type: None, if the JSON type can be derived from the function signature
+            (using :func:`inspect.signature`) or the concrete simple JSON type if this is not
+            possible.
+        output_type: None if the target type can be derived from the function signature
+            (using :func:`inspect.signature`) or the concrete target type if this is not
+            possible.
+
+        Example FunctionBasedFromSimpleJsonConverter:
+            >>> from typing import Sequence
+            >>> from jsonype import (FunctionBasedFromSimpleJsonConverter, ParameterizedTypeInfo,
+            ...                      JsonPath)
+            >>>
+            >>> def str_to_list(comma_separated_str: str) -> Sequence[str]:
+            ...     return comma_separated_str.split(",")
+            >>>
+            >>> converter = FunctionBasedFromSimpleJsonConverter(str_to_list)
+            >>> print(converter.convert(
+            ...     "a,b",
+            ...     ParameterizedTypeInfo.from_optionally_generic(Sequence[str]),
+            ...     JsonPath(),
+            ...     lambda a, b, c: None
+            ... ))
+            ['a', 'b']
+            >>> # if the function signature is untyped, types can be provided explicitly:
+            >>>
+            >>> converter2 = FunctionBasedFromSimpleJsonConverter(
+            ...     lambda s: s.split(","), str, Sequence[str])
+    """
 
     def __init__(self,
                  f: Callable[[JsonType_contra], TargetType_co],

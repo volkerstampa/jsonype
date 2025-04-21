@@ -277,8 +277,7 @@ class TypedJson:
 
         Example prepend:
             >>> from dataclasses import dataclass
-            >>> from typing import Callable, Any
-            >>> from jsonype import TypedJson, ToJsonConverter
+            >>> from jsonype import TypedJson, FunctionBasedToSimpleJsonConverter
             >>> from json import dumps
             >>>
             >>> class Password(str):
@@ -296,16 +295,12 @@ class TypedJson:
             >>> print(dumps(typed_json.to_json(person)))
             {"name": "John Doe", "pwd": "secret"}
             >>> # A custom converter can prevent revealing Password types
-            >>> class PasswordToString(ToJsonConverter[str]):
-            ...     def can_convert(self, o: Any)-> bool:
-            ...         return isinstance(o, Password)
-            ...
-            ...     def convert(self, o: Password, to_json: Callable[[Any], Json])-> Json:
-            ...         return "***"
-            >>>
+            >>> # Simple custom converters are most easily built with
+            >>> # FunctionBasedFromSimpleJsonConverter or FunctionBasedToSimpleJsonConverter
+            >>> password_to_str = FunctionBasedToSimpleJsonConverter(lambda pwd: "***", Password)
             >>> # Since a Password is also a str the new converter needs to take precedence over
             >>> # the existing converter for str, that is why it is prepended.
-            >>> typed_json = typed_json.prepend([], [PasswordToString()])
+            >>> typed_json = typed_json.prepend([], [password_to_str])
             >>> print(dumps(typed_json.to_json(person)))
             {"name": "John Doe", "pwd": "***"}
         """

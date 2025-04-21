@@ -7,6 +7,8 @@ from .base_types import JsonPath as JsonPath  # noqa: W0611
 # isort: off
 from .basic_from_json_converters import (FromJsonConversionError  # noqa: W0611
                                          as FromJsonConversionError)
+from .basic_from_json_converters import (FunctionBasedFromSimpleJsonConverter   # noqa: W0611
+                                         as FunctionBasedFromSimpleJsonConverter)
 # isort: on
 from .basic_from_json_converters import FromJsonConverter as FromJsonConverter  # noqa: W0611
 
@@ -27,6 +29,12 @@ from .basic_to_json_converters import FromMapping as FromMapping  # noqa: W0611
 from .basic_to_json_converters import FromNone as FromNone  # noqa: W0611
 from .basic_to_json_converters import FromSequence as FromSequence  # noqa: W0611
 from .basic_to_json_converters import FromSimple as FromSimple  # noqa: W0611
+
+# isort: off
+from .basic_to_json_converters import (FunctionBasedToSimpleJsonConverter  # noqa: W0611
+                                       as FunctionBasedToSimpleJsonConverter)
+# isort: on
+from .basic_to_json_converters import ToJsonConversionError as ToJsonConversionError  # noqa: W0611
 from .basic_to_json_converters import ToJsonConverter as ToJsonConverter  # noqa: W0611
 from .dataclass_converters import FromDataclass as FromDataclass  # noqa: W0611
 from .dataclass_converters import ToDataclass as ToDataclass  # noqa: W0611

@@ -58,6 +58,35 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
 
 
 class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
+    # noinspection GrazieInspection
+    """A function based :class:`ToJsonConverter`.
+
+    Creates a ``ToJsonConverter`` from a function that maps a source type to a simple JSON type.
+
+    Args:
+        f: A function that maps a source type into a simple JSON type (int, float, str, bool).
+        input_type: None, if the source type can be derived from the function signature
+            (using :func:`inspect.signature`) or the concrete source type if this is not
+            possible.
+
+    Example FunctionBasedToSimpleJsonConverter:
+        >>> from typing import Sequence
+        >>> from jsonype import FunctionBasedToSimpleJsonConverter
+        >>>
+        >>> def abbreviate_str(s: str) -> str:
+        ...     return s if len(s) < 8 else f"{s[:2]}...{s[-2:]}"
+        >>>
+        >>> converter = FunctionBasedToSimpleJsonConverter(abbreviate_str)
+        >>> print(converter.convert(
+        ...     "Long String",
+        ...     lambda a: None
+        ... ))
+        Lo...ng
+        >>> # if the function signature is untyped, the input type can be provided explicitly:
+        >>>
+        >>> converter2 = FunctionBasedToSimpleJsonConverter(
+        ...     lambda s: s if len(s) < 8 else f"{s[:2]}...{s[-2:]}", str)
+    """
 
     def __init__(self,
                  f: Callable[[SourceType_contra], JsonType_co],
@@ -76,7 +105,10 @@ class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
         return isinstance(o, self._input_type)
 
     def convert(self, o: SourceType_contra, _to_json: Callable[[Any], Json]) -> Json:
-        return self._f(o)
+        try:
+            return self._f(o)
+        except ValueError as e:
+            raise ToJsonConversionError(o, str(e)) from e
 
 
 class FromNone(ToJsonConverter[JsonNull]):

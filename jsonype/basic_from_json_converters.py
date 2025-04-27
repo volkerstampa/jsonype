@@ -8,8 +8,7 @@ from typing import (Any, Callable, Generic, Literal, Protocol, TypeVar, Union, c
 
 from typing_extensions import get_origin
 
-from jsonype import Json, JsonPath
-from jsonype.base_types import JsonSimple
+from jsonype.base_types import Json, JsonPath, JsonSimple
 
 TargetType_co = TypeVar("TargetType_co", covariant=True)
 ContainedTargetType_co = TypeVar("ContainedTargetType_co", covariant=True)

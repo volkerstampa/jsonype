@@ -3,9 +3,8 @@ from datetime import datetime, timezone
 
 from pytest import fixture, raises
 
-from jsonype import (FromJsonConversionError, FromJsonConverter, JsonPath, ParameterizedTypeInfo,
-                     ToJsonConverter, TypedJson)
-from jsonype.time_converters import FromDatetime, ToDatetime
+from jsonype import (FromDatetime, FromJsonConversionError, FromJsonConverter, JsonPath,
+                     ParameterizedTypeInfo, ToDatetime, ToJsonConverter, TypedJson)
 
 
 @fixture

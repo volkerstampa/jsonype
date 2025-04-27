@@ -5,9 +5,10 @@ from inspect import isclass
 from typing import (Any, Callable, NamedTuple, Protocol, Self, TypeVar, cast,  # noqa: W0611
                     runtime_checkable)
 
-from jsonype import Json, JsonPath, ParameterizedTypeInfo, ToJsonConverter
+from jsonype.base_types import Json, JsonPath
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
-                                                TargetType_co)
+                                                ParameterizedTypeInfo, TargetType_co)
+from jsonype.basic_to_json_converters import ToJsonConverter
 
 NamedTupleTarget_co = TypeVar("NamedTupleTarget_co", bound="NamedTuple", covariant=True)
 NamedTupleSource_contra = TypeVar("NamedTupleSource_contra", bound="NamedTuple", contravariant=True)

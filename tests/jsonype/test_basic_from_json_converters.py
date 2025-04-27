@@ -1,7 +1,7 @@
 from pytest import raises
 
-from jsonype import FromJsonConversionError, JsonPath, ParameterizedTypeInfo
-from jsonype.basic_from_json_converters import FunctionBasedFromSimpleJsonConverter
+from jsonype import (FromJsonConversionError, FunctionBasedFromSimpleJsonConverter, JsonPath,
+                     ParameterizedTypeInfo)
 
 
 def test_function_based_from_simple_json_converter() -> None:

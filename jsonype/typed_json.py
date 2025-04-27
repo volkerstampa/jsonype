@@ -1,16 +1,17 @@
 from collections.abc import Sequence
 from typing import Any, TypeVar, cast
 
-from jsonype import FromJsonConversionError, FromUUID, ToUUID
 from jsonype.base_types import Json, JsonPath
-from jsonype.basic_from_json_converters import (FromJsonConverter, ParameterizedTypeInfo, ToAny,
-                                                ToList, ToLiteral, ToMapping, ToNone, ToSimple,
-                                                ToTuple, ToTypedMapping, ToUnion)
+from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
+                                                ParameterizedTypeInfo, ToAny, ToList, ToLiteral,
+                                                ToMapping, ToNone, ToSimple, ToTuple,
+                                                ToTypedMapping, ToUnion)
 from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
                                               ToJsonConverter, UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
-from jsonype.simple_str_based_converters import FromBytes, FromPath, FromUrl, ToBytes, ToPath, ToUrl
+from jsonype.simple_str_based_converters import (FromBytes, FromPath, FromUrl, FromUUID, ToBytes,
+                                                 ToPath, ToUrl, ToUUID)
 from jsonype.time_converters import FromDate, FromDatetime, FromTime, ToDate, ToDatetime, ToTime
 
 TargetType = TypeVar("TargetType")

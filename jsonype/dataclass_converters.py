@@ -2,10 +2,10 @@ from collections.abc import Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
 from typing import Any, Callable, ClassVar, Protocol, TypeVar
 
-from jsonype import JsonPath, ParameterizedTypeInfo
-from jsonype.base_types import Json
+from jsonype.base_types import Json, JsonPath
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,
-                                                FromJsonConverter, TargetType_co)
+                                                FromJsonConverter, ParameterizedTypeInfo,
+                                                TargetType_co)
 from jsonype.basic_to_json_converters import ToJsonConverter
 
 

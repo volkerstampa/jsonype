@@ -1,8 +1,8 @@
 from datetime import date, datetime, time
 
-from jsonype import FromJsonConverter, ToJsonConverter
-from jsonype.basic_from_json_converters import FunctionBasedFromSimpleJsonConverter
-from jsonype.basic_to_json_converters import FunctionBasedToSimpleJsonConverter
+from jsonype.basic_from_json_converters import (FromJsonConverter,
+                                                FunctionBasedFromSimpleJsonConverter)
+from jsonype.basic_to_json_converters import FunctionBasedToSimpleJsonConverter, ToJsonConverter
 
 
 # mimic class name

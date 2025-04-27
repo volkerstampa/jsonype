@@ -2,10 +2,8 @@ from dataclasses import MISSING, asdict, dataclass, fields
 
 from pytest import fixture, raises
 
-from jsonype import JsonPath, ParameterizedTypeInfo
-from jsonype.basic_from_json_converters import FromJsonConversionError
-from jsonype.dataclass_converters import FromDataclass, ToDataclass
-from jsonype.typed_json import TypedJson
+from jsonype import (FromDataclass, FromJsonConversionError, JsonPath, ParameterizedTypeInfo,
+                     ToDataclass, TypedJson)
 
 
 @dataclass

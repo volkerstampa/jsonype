@@ -3,9 +3,8 @@ from typing import Any, NamedTuple
 
 from pytest import fixture, mark, raises
 
-from jsonype import JsonPath, ParameterizedTypeInfo, TypedJson
-from jsonype.basic_from_json_converters import FromJsonConversionError
-from jsonype.named_tuple_converters import ToNamedTuple
+from jsonype import (FromJsonConversionError, JsonPath, ParameterizedTypeInfo, ToNamedTuple,
+                     TypedJson)
 
 
 class Demo(NamedTuple):

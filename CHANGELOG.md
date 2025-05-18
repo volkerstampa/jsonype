@@ -1,7 +1,7 @@
 Changelog
 =========
 
-## next
+## 0.6.0
 
 - Add converters for the following Python types that convert from/to str: datetime, time, date, UUID, Path, bytes, 
   SplitResult (URLs).

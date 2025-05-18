@@ -3,6 +3,11 @@ Changelog
 
 ## next
 
+- Add converters for the following Python types that convert from/to str: datetime, time, date, UUID, Path, bytes, 
+  SplitResult (URLs).
+- Add generic function based converters `FunctionBasedFromSimpleJsonConverter` and `FunctionBasedToSimpleJsonConverter`.
+  They allow to write a converter from/to a simple JSON type by just providing a corresponding function.
+
 ## 0.5.0
 
 - Add support for custom converters. You can now create a new TypedJson instance from an existing one

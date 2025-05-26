@@ -193,14 +193,14 @@ files = [
 
 [[package]]
 name = "eradicate"
-version = "2.3.0"
+version = "3.0.0"
 description = "Removes commented-out code."
 optional = false
 python-versions = "*"
 groups = ["dev"]
 files = [
-    {file = "eradicate-2.3.0-py3-none-any.whl", hash = "sha256:2b29b3dd27171f209e4ddd8204b70c02f0682ae95eecb353f10e8d72b149c63e"},
-    {file = "eradicate-2.3.0.tar.gz", hash = "sha256:06df115be3b87d0fc1c483db22a2ebb12bcf40585722810d809cc770f5031c37"},
+    {file = "eradicate-3.0.0-py3-none-any.whl", hash = "sha256:935af46a483c0d69baf155a9435ad847319389ba1c47cf2ee7196ca66dc586a2"},
+    {file = "eradicate-3.0.0.tar.gz", hash = "sha256:b237d9f2309b181035d2a87b24385b4f11ab7bb858b75bff496964b5f453aa77"},
 ]
 
 [[package]]
@@ -987,4 +987,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "88c71c08533c282ff4df055f1f8a6a5346406d001748b7e6309df6350cf214f4"
+content-hash = "fca234504abc00cdae61af305fbfc9eb809610b078d74c47a9b3775c6a355f45"

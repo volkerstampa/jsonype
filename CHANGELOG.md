@@ -3,6 +3,8 @@ Changelog
 
 ## next
 
+- Include marker file py.typed to indicate that package contains type-hints
+
 ## 0.6.0
 
 - Add converters for the following Python types that convert from/to str: datetime, time, date, UUID, Path, bytes, 

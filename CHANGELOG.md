@@ -1,7 +1,7 @@
 Changelog
 =========
 
-## next
+## 0.6.1
 
 - Include marker file py.typed to indicate that package contains type-hints
 

@@ -1,4 +1,4 @@
-# pylint: disable=W0621
+# pylint: disable=redefined-outer-name
 from datetime import datetime, timezone
 
 from pytest import fixture, raises

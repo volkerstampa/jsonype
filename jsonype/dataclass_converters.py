@@ -10,7 +10,7 @@ from jsonype.basic_to_json_converters import ToJsonConverter
 
 
 # Only "known" field of a dataclass
-class DataClassProtocol(Protocol):   # noqa: R0903
+class DataClassProtocol(Protocol):   # pylint: disable=too-few-public-methods
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 

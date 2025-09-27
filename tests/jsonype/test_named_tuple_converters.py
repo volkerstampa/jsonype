@@ -94,7 +94,10 @@ def test_to_named_tuple_convert_with_missing_field(
     with raises(FromJsonConversionError) as e:
         to_named_tuple.convert({}, demo_info, JsonPath(), typed_json.from_json_with_path)
     # Demo is a NamedTuple and thus has public member _field_defaults
-    for missing_key in demo_named_tuple._asdict().keys() - Demo._field_defaults.keys():  # noqa: W0212, E1101
+    for missing_key in (
+            demo_named_tuple._asdict().keys()
+            - Demo._field_defaults.keys()  # pylint: disable=protected-access, no-member
+    ):
         assert missing_key in str(e.value)
 
 

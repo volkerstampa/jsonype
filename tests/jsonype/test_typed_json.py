@@ -222,7 +222,7 @@ def test_with_appended_custom_to_converter_where_other_converter_exists() -> Non
 
 def test_with_appended_from_converter_for_custom_type() -> None:
     # enough for testing
-    class MyType:  # noqa: R0903
+    class MyType:  # pylint: disable=too-few-public-methods
         pass
 
     class StringToMyType(FromJsonConverter[MyType, None]):
@@ -242,7 +242,7 @@ def test_with_appended_from_converter_for_custom_type() -> None:
 
 def test_with_appended_to_converter_for_custom_type() -> None:
     # enough for testing
-    class MyType:  # noqa: R0903
+    class MyType:  # pylint: disable=too-few-public-methods
         pass
 
     class MyTypeToString(ToJsonConverter[MyType]):
@@ -357,6 +357,7 @@ def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonCo
 # return early if condition on type is met.
 # correct according to mypy
 # noinspection PyTypeChecker
+# pylint: disable-next=too-many-return-statements,inconsistent-return-statements
 def _json_with_error(  # noqa: R901, PLR0911, C901
         js: Json, path: JsonPath, ty: type
 ) -> tuple[Json, FromJsonConversionError]:
@@ -693,7 +694,8 @@ def _random_typed_map(size: int, factories: Sequence[ObjectFactory[Any]]) \
     vals, types = _random_values(size, factories)
     keys = [_random_symbol() for _ in vals]
     # https://github.com/python/mypy/issues/7178
-    map_type = TypedDict(_random_symbol(), dict(zip(keys, types)))  # type: ignore[misc] # noqa: UP013
+    map_type = TypedDict(_random_symbol(),  # type: ignore[misc] # noqa: UP013
+                         dict(zip(keys, types)))
     # the types of vals are in types, and they are zipped in the same way with
     # the keys as the vals are zipped here so this should actually be safe.
     return map_type(**dict(zip(keys, vals))), map_type  # type: ignore[typeddict-item]
@@ -708,7 +710,7 @@ def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
         cast("type[NamedTupleTarget_co]", NamedTuple(_random_symbol(), list(zip(keys, types))))
     # _make is actually public
     # noinspection PyProtectedMember
-    return namedtuple_type._make(vals), namedtuple_type  # noqa: E1101
+    return namedtuple_type._make(vals), namedtuple_type  # pylint: disable=no-member
 
 
 def _random_dataclass(size: int, factories: Sequence[ObjectFactory[Any]]) \

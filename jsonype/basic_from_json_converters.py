@@ -255,7 +255,7 @@ class ToUnion(FromJsonConverter[TargetType_co, TargetType_co]):
 
 
 class ToLiteral(FromJsonConverter[TargetType_co, None]):
-    """Convert to one of the listet literals.
+    """Convert to one of the listed literals.
 
     Returns the JSON-representation unchanged if it equals one of the literals.
 
@@ -453,7 +453,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_c
         >>> from typing import TypedDict
         >>>
         >>> # using the ToTypedMapping converter one can convert for example:
-        >>> json_object = {"k1": 1.0, "k2": 2, "un": "known"}
+        >>> json_object = {"k1": 1.0, "k2": 2, "unknown-key": "value"}
         >>> # into the following:
         >>> class Map(TypedDict):
         ...     k1: float

@@ -51,9 +51,15 @@ line_length = 100
 src_paths = ["jsonype", "tests"]
 
 [tool.pylint."messages control"]
-disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
+enable = "all"
+disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring", "suppressed-message", "locally-disabled"]
 ignore = ["docs"]
 recursive = true
+evaluation = "10.0 - ((float(5 * error + warning + refactor + convention + info) / statement) * 10)"
+
+[tool.pylint.spelling]
+spelling-dict = "en"
+spelling-private-dict-file = ".pylint-spell-dictionary"
 
 [tool.radon]
 ignore = ["docs"]
@@ -62,6 +68,9 @@ cc_min = "C"
 [tool.vulture]
 min_confidence = 61
 paths = ["jsonype", "tests"]
+
+[tool.flake8]
+max-line-length = 100
 
 [tool.ruff]
 line-length = 100
@@ -98,16 +107,17 @@ pytest = "^8.3.1"
 mypy = "^1.10.0"
 sphinx = ">=7.3.7,<9.0.0"
 pycodestyle = "^2.12.0"
-pyflakes = "^3.2.0"
 mccabe ="^0.7.0"
 radon="^6.0.1"
-# pydocstyle>=6.2 breaks lama: https://github.com/klen/pylama/issues/232
-pydocstyle = "~6.1.1"
-pylint = "^3.2.3"
+pydocstyle = "^6.3.0"
+pylint = {extras = ["spelling"], version = "^3.3.8"}
 toml = "^0.10.2"
-pylama = "^8.4.1"
 vulture = "^2.11"
 eradicate = ">=2.3,<4.0"
 sphinx-rtd-theme = ">=2,<4"
 setuptools = ">=70.1,<81.0"
 ruff = ">=0.4.10,<0.14.0"
+pyenchant = "^3.2.2"
+flake8 = "^7.3.0"
+flake8-pyproject = "^1.2.3"
+flake8-eradicate = "^1.5.0"

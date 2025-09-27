@@ -31,7 +31,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
       - run: poetry install
-      - run: poetry run ./check.sh
+      - run: poetry run ./check.sh --no-fix
 
   publish:
     runs-on: ubuntu-latest

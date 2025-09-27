@@ -46,6 +46,8 @@ current directory is set to the project's root folder.
 ./check.sh
 ```
 
+Install enchant-2 ?
+
 ### Run build
 
 ```bash

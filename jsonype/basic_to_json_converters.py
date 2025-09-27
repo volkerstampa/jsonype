@@ -58,7 +58,7 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
 
 
 class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
-    # noinspection GrazieInspection
+    # noinspection GrazieInspection  # pylint: disable=wrong-spelling-in-docstring
     """A function based :class:`ToJsonConverter`.
 
     Creates a ``ToJsonConverter`` from a function that maps a source type to a simple JSON type.

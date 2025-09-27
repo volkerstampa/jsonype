@@ -24,20 +24,6 @@ build-backend = "poetry.core.masonry.api"
 version_file = "jsonype/_version.py"
 local_scheme = "poetry_setuptools_scm_plugin:no_local_scheme"
 
-[tool.pylama]
-# dont run mypy through pylama because of:
-# https://github.com/klen/pylama/issues/163
-linters = "eradicate,mccabe,pycodestyle,pydocstyle,pyflakes,pylint,radon,vulture,isort"
-skip = "docs/*"
-
-[tool.pylama.linter.pydocstyle]
-ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
-
-[tool.pylama.linter.mypy]
-cache_dir = "build/.mypy_cache"
-strict = "True"
-files = "jsonype,tests"
-
 [tool.pydocstyle]
 ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
 
@@ -51,17 +37,36 @@ line_length = 100
 src_paths = ["jsonype", "tests"]
 
 [tool.pylint."messages control"]
-disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring"]
+enable = "all"
+disable = [
+    # spelling is disabled by default (no dict specified)
+    # to avoid that pylint complains about useless wrong-spelling-in-docstring
+    # disable useless-supression
+    # this setup makes pylint work in environments where no enchant lib is installed
+    # if spelling-dict is in this config file set to "en" instead, it might become
+    # impossible to start pylint as it complains about missing dict "en" even if this
+    # is overwritten on commandline
+    "useless-suppression",
+    "invalid-name",
+    "missing-module-docstring", "missing-function-docstring", "missing-class-docstring",
+    "suppressed-message", "locally-disabled"
+]
 ignore = ["docs"]
 recursive = true
+evaluation = "10.0 - ((float(5 * error + warning + refactor + convention + info) / statement) * 10)"
 
-[tool.radon]
-ignore = ["docs"]
-cc_min = "C"
+[tool.pylint.spelling]
+spelling-private-dict-file = ".pylint-spell-dictionary"
+
+[tool.pylint.main]
+jobs = 0
 
 [tool.vulture]
 min_confidence = 61
 paths = ["jsonype", "tests"]
+
+[tool.flake8]
+max-line-length = 100
 
 [tool.ruff]
 line-length = 100
@@ -98,16 +103,16 @@ pytest = "^8.3.1"
 mypy = "^1.10.0"
 sphinx = ">=7.3.7,<9.0.0"
 pycodestyle = "^2.12.0"
-pyflakes = "^3.2.0"
 mccabe ="^0.7.0"
-radon="^6.0.1"
-# pydocstyle>=6.2 breaks lama: https://github.com/klen/pylama/issues/232
-pydocstyle = "~6.1.1"
-pylint = "^3.2.3"
+pydocstyle = "^6.3.0"
+pylint = {extras = ["spelling"], version = "^3.3.8"}
 toml = "^0.10.2"
-pylama = "^8.4.1"
 vulture = "^2.11"
 eradicate = ">=2.3,<4.0"
 sphinx-rtd-theme = ">=2,<4"
 setuptools = ">=70.1,<81.0"
 ruff = ">=0.4.10,<0.14.0"
+pyenchant = "^3.2.2"
+flake8 = "^7.3.0"
+flake8-pyproject = "^1.2.3"
+flake8-eradicate = "^1.5.0"

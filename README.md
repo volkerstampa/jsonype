@@ -26,6 +26,10 @@ See [documentation](https://jsonype.readthedocs.io).
   See [Poetry's documentation](https://python-poetry.org/docs/#installation)
   for alternative installation options, but make sure that poetry plugins can be installed.
 - [make](https://www.gnu.org/software/make/) for building documentation
+- enchant for spell checking with 
+- [Pylint](https://pylint.readthedocs.io/en/stable/user_guide/installation/command_line_installation.html#command-line-installation)
+  including a dictionary for `en`. In Debian based systems this can be installed with:
+  - `sudo apt install enchant-2 aspell-en`
 
 ### Setup virtual env
 
@@ -44,6 +48,21 @@ current directory is set to the project's root folder.
 
 ```bash
 ./check.sh
+```
+
+This does not only check, but it also applies fixes that can be applied automatically.
+To run checks only:
+
+```bash
+./check.sh --no-fix
+```
+
+Checks include spell checking by default which requires 
+[`enchant`](https://rrthomas.github.io/enchant/) to be installed. If this is not available
+you can run:
+
+```bash
+./check.sh --no-spellcheck
 ```
 
 ### Run build

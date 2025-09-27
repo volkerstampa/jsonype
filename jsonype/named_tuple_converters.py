@@ -2,8 +2,8 @@ from collections.abc import Iterable, Mapping
 from inspect import isclass
 # pyflakes wants NamedTuple to be imported as it's used as bounds-parameter below
 # noinspection PyUnresolvedReferences
-from typing import (Any, Callable, NamedTuple, Protocol, Self, TypeVar, cast,  # noqa: W0611
-                    runtime_checkable)
+from typing import (Any, Callable, NamedTuple, Protocol, Self,  # pylint: disable=unused-import
+                    TypeVar, cast, runtime_checkable)
 
 from jsonype.base_types import Json, JsonPath
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
@@ -17,7 +17,7 @@ NamedTupleSource_contra = TypeVar("NamedTupleSource_contra", bound="NamedTuple",
 @runtime_checkable
 # A NamedTuple only comes with methods starting with _
 # (to prevent name clashes)
-class _NamedTupleProtocol(Protocol):  # noqa: R0903
+class _NamedTupleProtocol(Protocol):  # pylint: disable=too-few-public-methods
 
     # protocol definition, so unused vars are expected
     def __init__(self, **kwargs: Any) -> None:  # noqa: V107
@@ -66,9 +66,13 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
             assert isinstance(js, Mapping)
             # _field_defaults is actually public
             # noinspection PyProtectedMember
-            return js.get(field_name,
-                          target_type_info.full_type._field_defaults.get(field_name))  # noqa: W0212
-
+            return js.get(
+                field_name,
+                # pylint: disable-next=protected-access
+                target_type_info.full_type._field_defaults.get(field_name)
+            )
+        # Yes similar to the Dataclass code
+        # pylint: disable=duplicate-code
         if not isinstance(js, Mapping):
             raise FromJsonConversionError(js, path, target_type_info.full_type)
         if self._strict and (extra_keys := js.keys() - target_type_info.annotations.keys()):
@@ -76,9 +80,12 @@ class ToNamedTuple(FromJsonConverter[NamedTupleTarget_co, TargetType_co]):
                                           f"unexpected keys: {extra_keys}")
         # _field_defaults is actually public
         # noinspection PyProtectedMember
-        if missing_keys := (target_type_info.annotations.keys()
-                            - js.keys()
-                            - target_type_info.full_type._field_defaults.keys()):  # noqa: W0212
+        if missing_keys := (
+                target_type_info.annotations.keys()
+                - js.keys()
+                # pylint: disable-next=protected-access
+                - target_type_info.full_type._field_defaults.keys()
+        ):
             raise FromJsonConversionError(js, path, target_type_info.full_type,
                                           f"missing keys: {missing_keys}")
 

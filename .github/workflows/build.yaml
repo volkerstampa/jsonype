@@ -12,10 +12,8 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+      - uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
         with:
-          disable-sudo: true
           egress-policy: block
           allowed-endpoints: >
             docs.python.org:443
@@ -23,15 +21,22 @@ jobs:
             github.com:443
             install.python-poetry.org:443
             pypi.org:443
-
+            packages.microsoft.com:443
+            azure.archive.ubuntu.com:80
+            esm.ubuntu.com:443
+            security.ubuntu.com:443
+            archive.ubuntu.com:443
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
-      - run: poetry install
-      - run: poetry run ./check.sh
+      - run: |
+          sudo apt-get -y update
+          sudo apt-get -y install enchant-2 aspell-en
+          poetry install
+          poetry run ./check.sh --no-fix
 
   publish:
     runs-on: ubuntu-latest

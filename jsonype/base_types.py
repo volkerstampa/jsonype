@@ -1,12 +1,12 @@
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import groupby
-from typing import Literal, Union
+from typing import TypeAlias, Union
 
-JsonNull = Literal[None]
-JsonSimple = Union[int, float, str, bool]
-JsonComplex = Union[Sequence["Json"], Mapping[str, "Json"]]
-Json = Union[JsonNull, JsonSimple, JsonComplex]
+JsonNull: TypeAlias = None
+JsonSimple: TypeAlias = Union[int, float, str, bool]
+JsonComplex: TypeAlias = Union[Sequence["Json"], Mapping[str, "Json"]]
+Json: TypeAlias = Union[JsonNull, JsonSimple, JsonComplex]
 
 
 @dataclass(frozen=True)

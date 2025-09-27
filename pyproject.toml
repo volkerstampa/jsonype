@@ -52,14 +52,28 @@ src_paths = ["jsonype", "tests"]
 
 [tool.pylint."messages control"]
 enable = "all"
-disable = ["invalid-name", "missing-module-docstring", "missing-function-docstring", "missing-class-docstring", "suppressed-message", "locally-disabled"]
+disable = [
+    # spelling is disabled by default (no dict specified)
+    # to avoid that pylint complains about useless wrong-spelling-in-docstring
+    # disable useless-supression
+    # this setup makes pylint work in environments where no enchant lib is installed
+    # if spelling-dict is in this config file set to "en" instead, it might become
+    # impossible to start pylint as it complains about missing dict "en" even if this
+    # is overwritten on commandline
+    "useless-suppression",
+    "invalid-name",
+    "missing-module-docstring", "missing-function-docstring", "missing-class-docstring",
+    "suppressed-message", "locally-disabled"
+]
 ignore = ["docs"]
 recursive = true
 evaluation = "10.0 - ((float(5 * error + warning + refactor + convention + info) / statement) * 10)"
 
 [tool.pylint.spelling]
-spelling-dict = "en"
 spelling-private-dict-file = ".pylint-spell-dictionary"
+
+[tool.pylint.main]
+jobs = 0
 
 [tool.radon]
 ignore = ["docs"]

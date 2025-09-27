@@ -26,9 +26,15 @@ else
 fi
 if $spellCheck
 then
-  pylintArgs=()
+  # Unfortunately we cannot make spellcheck the default and just disable it here on demand
+  # Problems is that a spelling-dict in the config file that does not exist in an environment
+  # without enchant makes it impossible to start pylint event when the spelling-dict is overwritten
+  # on commandline.
+  # its a single ,-separated arg
+  # shellcheck disable=SC2054
+  pylintArgs=( --spelling-dict en --enable useless-suppression )
 else
-  pylintArgs=( --disable spelling,useless-suppression )
+  pylintArgs=( )
 fi
 
 set -x

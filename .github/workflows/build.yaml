@@ -30,8 +30,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
-      - run: poetry install
-      - run: poetry run ./check.sh --no-fix
+      - run: |
+          apt-get update 
+          apt-get -y install enchant-2 aspell-en
+          poetry install
+          poetry run ./check.sh --no-fix
 
   publish:
     runs-on: ubuntu-latest

@@ -17,32 +17,33 @@ See [documentation](https://jsonype.readthedocs.io).
 
 ### Prerequisites
 
-- Python >= 3.11:
-  Can be installed with [pyenv](https://github.com/pyenv/pyenv):
-  - `pyenv install 3.11`
-- [Poetry](https://python-poetry.org/) >=1.2: Can be installed with [pipx](https://pipx.pypa.io/):
-  - `pipx install poetry`
+- [uv](https://docs.astral.sh/uv/) >=0.9: Can be installed with [pipx](https://pipx.pypa.io/):
+  - `pipx install uv`
 
-  See [Poetry's documentation](https://python-poetry.org/docs/#installation)
-  for alternative installation options, but make sure that poetry plugins can be installed.
+  See [uv's documentation](https://docs.astral.sh/uv/getting-started/installation/)
+  for alternative installation options.
+- Python >= 3.11:
+  Can be installed with [uv](https://docs.astral.sh/uv/guides/install-python/):
+  - `uv python install 3.11`
+
 - [make](https://www.gnu.org/software/make/) for building documentation
-- enchant for spell checking with 
-- [Pylint](https://pylint.readthedocs.io/en/stable/user_guide/installation/command_line_installation.html#command-line-installation)
+- enchant for spell checking with
+  [Pylint](https://pylint.readthedocs.io/en/stable/user_guide/installation/command_line_installation.html#command-line-installation)
   including a dictionary for `en`. In Debian based systems this can be installed with:
   - `sudo apt install enchant-2 aspell-en`
 
 ### Setup virtual env
 
 ```bash
-poetry self add poetry-setuptools-scm-plugin@latest
-poetry install
-poetry self add poetry-plugin-shell # only required for poetry >= 2
-poetry shell
+uv sync
+. .venv/bin/activate
 ```
 
-All commands below assume that they are executed in a corresponding
-virtual environment (e.g. in a shell started by `poetry shell`) and the
-current directory is set to the project's root folder.
+All commands below assume that they are executed in the activated
+virtual environment and the
+current directory is set to the project's root folder. If the virtual
+environment is not activated the commands have to be prefixed with 
+[`uv run`](https://docs.astral.sh/uv/reference/cli/#uv-run)
 
 ### Run checks
 

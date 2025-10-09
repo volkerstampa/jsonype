@@ -26,3 +26,5 @@ datetime
 vals
 TargetType
 docstring
+setuptools
+scm

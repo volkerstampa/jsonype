@@ -6,11 +6,9 @@ build:
     python: "3.11"
   jobs:
     post_create_environment:
-      - pip install poetry
-      - poetry self add poetry-setuptools-scm-plugin
-      - '"$(dirname "$(readlink --canonicalize-existing "$(which poetry)")")/python" -m setuptools_scm --force-write-version-files'
+      - pip install uv
     post_install:
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv sync --inexact --active
 
 sphinx:
   configuration: docs/source/conf.py

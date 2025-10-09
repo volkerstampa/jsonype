@@ -1,12 +1,10 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from inspect import Parameter, Signature, get_annotations, isclass, signature
 from types import NoneType, UnionType
-from typing import (Any, Callable, Generic, Literal, Protocol, TypeVar, Union, cast, get_args,
+from typing import (Any, Generic, Literal, Protocol, TypeVar, Union, cast, get_args, get_origin,
                     runtime_checkable)
-
-from typing_extensions import get_origin
 
 from jsonype.base_types import Json, JsonPath, JsonSimple
 
@@ -247,7 +245,7 @@ class ToUnion(FromJsonConverter[TargetType_co, TargetType_co]):
                 and all(isinstance(e, ValueError) for e in res_or_failures):
             raise FromJsonConversionError(
                 js, path, target_type_info.full_type,
-                str(list(zip(union_types_with_str_first, res_or_failures)))
+                str(list(zip(union_types_with_str_first, res_or_failures, strict=False)))
             )
         # here we know that one conversion was successful. As we only convert into the
         # type-parameters of the Union the returned result must be of the Union-type
@@ -353,7 +351,7 @@ class ToTuple(FromJsonConverter[tuple[Any, ...], Any]):
                 f"Number of elements: {len(js)} not equal to tuple-size {len(element_types)}"
             )
         return tuple(from_json(e, ty, path.append(idx))
-                     for idx, (e, ty) in enumerate(zip(js, element_types)))
+                     for idx, (e, ty) in enumerate(zip(js, element_types, strict=False)))
 
 
 class ToList(FromJsonConverter[Sequence[TargetType_co], TargetType_co]):
@@ -506,7 +504,7 @@ class ToTypedMapping(FromJsonConverter[Mapping[str, TargetType_co], TargetType_c
 def _first_success(
         f: Callable[..., ContainedTargetType_co],
         i: Iterable[tuple[TargetType_co, type[TargetType_co], JsonPath]]
-) -> Union[ContainedTargetType_co, Sequence[ValueError]]:
+) -> ContainedTargetType_co | Sequence[ValueError]:
     failures: list[ValueError] = []
     for args in i:
         try:

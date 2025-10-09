@@ -1,6 +1,6 @@
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 from functools import partial
 from inspect import get_annotations, isclass
 from json import dumps, loads
@@ -9,8 +9,7 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Callable, NamedTuple, Optional, TypeAlias, TypedDict, TypeVar, Union, cast,
-                    get_args, get_origin)
+from typing import Any, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast, get_args, get_origin
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
@@ -42,9 +41,9 @@ def test_simple(simple_obj: Any) -> None:
 
 @mark.parametrize(
     ("simple_obj", "ty"),
-    [(datetime.now(timezone.utc), datetime),
-     (datetime.now(timezone.utc).date(), date),
-     (datetime.now(timezone.utc).time(), time),
+    [(datetime.now(UTC), datetime),
+     (datetime.now(UTC).date(), date),
+     (datetime.now(UTC).time(), time),
      (uuid4(), UUID),
      (Path.cwd(), Path),
      (urlsplit("scheme://netloc/path?query#fragment"), SplitResult),
@@ -55,10 +54,10 @@ def test_simple_conversions(simple_obj: Any, ty: type[_T]) -> None:
 
 
 @mark.parametrize("simple_obj", [0, "Hello", None])
-def test_simple_with_union_type(simple_obj: Union[int, str, None]) -> None:
+def test_simple_with_union_type(simple_obj: int | str | None) -> None:
     # Union is a type-special-form so cast to type explicitly
     assert_can_convert_from_to_json(
-        simple_obj, cast("type[Optional[Union[int, str]]]", Optional[Union[int, str]]))
+        simple_obj, cast("type[int | str | None]", int | str | None))
 
 
 @mark.parametrize("simple_obj", [0, "Hello", None])
@@ -93,7 +92,7 @@ def test_untyped_list(li: Sequence[Any]) -> None:
 
 def test_inhomogeneous_list() -> None:
     assert_can_convert_from_to_json([1, 0., True, None, "Hello"],
-                                    list[Union[int, float, bool, None, str]])
+                                    list[int | float | bool | None | str])
 
 
 def test_inhomogeneous_tuple() -> None:
@@ -122,7 +121,7 @@ def test_homogeneous_mapping(m: Mapping[str, Any], ty: TypeAlias) -> None:
 
 
 def test_inhomogeneous_mapping() -> None:
-    assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, dict[str, Union[int, str]])
+    assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, dict[str, int | str])
 
 
 def test_mapping_with_non_str_keys() -> None:
@@ -464,7 +463,7 @@ def _typed_mapping_with_error(
 
 
 def _random_typed_object(size: int,
-                         factories: Optional[Sequence[ObjectFactory[_T]]] = None) \
+                         factories: Sequence[ObjectFactory[_T]] | None = None) \
         -> tuple[_T, type[_T]]:
     factories = factories or _all_types_factories()
     return choice(factories)(size, factories)
@@ -533,8 +532,8 @@ def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[st
 def _random_datetime(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
 ) -> tuple[datetime, type[datetime]]:
-    min_datetime = datetime.min.replace(tzinfo=timezone.utc)
-    max_datetime = datetime.max.replace(tzinfo=timezone.utc)
+    min_datetime = datetime.min.replace(tzinfo=UTC)
+    max_datetime = datetime.max.replace(tzinfo=UTC)
     # conversion to from float with (from)timestamp() is not precise due to rounding errors
     # so shift max by 1ms to prevent ValueErrors
     max_datetime_adjusted = datetime.max.replace(tzinfo=timezone(timedelta(milliseconds=1)))
@@ -543,7 +542,7 @@ def _random_datetime(
                       max_datetime],
                      weights=[1, 5, 1])[0]
     if isinstance(result, float):
-        result = datetime.fromtimestamp(result, tz=timezone.utc)
+        result = datetime.fromtimestamp(result, tz=UTC)
     assert isinstance(result, datetime)
     return result, datetime
 
@@ -614,8 +613,8 @@ def _random_homogeneous_sequence(size: int, factories: Sequence[ObjectFactory[_T
     # Union[types[0]] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
-    element_type: TypeAlias = cast("type", Union[types[0]] if seq else Any)
-    return [e for e, ty in zip(seq, types) if ty == types[0]], Sequence[element_type]
+    element_type: TypeAlias = cast("type", types[0] if seq else Any)
+    return [e for e, ty in zip(seq, types, strict=False) if ty == types[0]], Sequence[element_type]
 
 
 def _random_untyped_list(size: int, factories: Sequence[ObjectFactory[_T]]) \
@@ -675,9 +674,9 @@ def _random_homogeneous_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
-    value_type: TypeAlias = cast("type", Union[types[0]] if vals else Any)
+    value_type: TypeAlias = cast("type", types[0] if vals else Any)
     return ({_random_str(size, factories)[0]: val
-             for val, ty in zip(vals, types) if ty == types[0]},
+             for val, ty in zip(vals, types, strict=False) if ty == types[0]},
             Mapping[str, value_type])
 
 
@@ -695,10 +694,10 @@ def _random_typed_map(size: int, factories: Sequence[ObjectFactory[Any]]) \
     keys = [_random_symbol() for _ in vals]
     # https://github.com/python/mypy/issues/7178
     map_type = TypedDict(_random_symbol(),  # type: ignore[misc] # noqa: UP013
-                         dict(zip(keys, types)))
+                         dict(zip(keys, types, strict=False)))
     # the types of vals are in types, and they are zipped in the same way with
     # the keys as the vals are zipped here so this should actually be safe.
-    return map_type(**dict(zip(keys, vals))), map_type  # type: ignore[typeddict-item]
+    return map_type(**dict(zip(keys, vals, strict=False))), map_type  # type: ignore[typeddict-item]
 
 
 def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
@@ -707,7 +706,8 @@ def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
     keys = [_random_symbol() for _ in vals]
     # Functional syntax to construct NamedTuple classes -> _make exists
     namedtuple_type = \
-        cast("type[NamedTupleTarget_co]", NamedTuple(_random_symbol(), list(zip(keys, types))))
+        cast("type[NamedTupleTarget_co]",
+             NamedTuple(_random_symbol(), list(zip(keys, types, strict=False))))
     # _make is actually public
     # noinspection PyProtectedMember
     return namedtuple_type._make(vals), namedtuple_type  # pylint: disable=no-member
@@ -717,10 +717,10 @@ def _random_dataclass(size: int, factories: Sequence[ObjectFactory[Any]]) \
         -> tuple[DataclassTarget_co, type[DataclassTarget_co]]:
     vals, types = _random_values(size, factories)
     keys = [_random_symbol() for _ in vals]
-    dataclass_type = make_dataclass(_random_symbol(), list(zip(keys, types)))
+    dataclass_type = make_dataclass(_random_symbol(), list(zip(keys, types, strict=False)))
     # dataclass_type is a dataclass-type as it was created with make_dataclass
     # noinspection PyTypeChecker
-    return dataclass_type(**dict(zip(keys, vals))), dataclass_type
+    return dataclass_type(**dict(zip(keys, vals, strict=False))), dataclass_type
 
 
 def _random_symbol() -> str:
@@ -752,7 +752,7 @@ def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
     value_and_types = cast(
         "tuple[Sequence[_T], Sequence[type[_T]]]",
         tuple(zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
-              cannot_convert_to_previous_type(val)))))
+              cannot_convert_to_previous_type(val)), strict=False)))
     return value_and_types or ((), ())
 
 

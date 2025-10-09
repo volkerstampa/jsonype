@@ -1,5 +1,5 @@
 # pylint: disable=redefined-outer-name
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pytest import fixture, raises
 
@@ -26,7 +26,7 @@ def datetime_type_info() -> ParameterizedTypeInfo[datetime]:
 
 @fixture
 def timestamp() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @fixture

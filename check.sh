@@ -39,7 +39,6 @@ fi
 
 set -x
 ruff check "${ruffCheckArgs[@]}"
-pycodestyle
 vulture
 isort "${isortArgs[@]}" .
 flake8

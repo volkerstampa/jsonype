@@ -1,12 +1,12 @@
-[tool.poetry]
+[project]
 name = "jsonype"
-version = "0"  # ignored
+dynamic = ["version"]
 description = "A package for converting classes with type hints to/from JSON"
-homepage = "https://github.com/volkerstampa/jsonype"
-authors = ["Volker Stampa <Volker.Stampa@gmx.net>"]
-maintainers = ["Volker Stampa <Volker.Stampa@gmx.net>"]
+authors = [{ name = "Volker Stampa", email = "Volker.Stampa@gmx.net" }]
+requires-python = ">=3.11, <4"
 readme = "README.md"
 license = "Apache-2.0"
+maintainers = [{ name = "Volker Stampa", email = "Volker.Stampa@gmx.net" }]
 keywords = ["json"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -16,13 +16,45 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.urls]
+Homepage = "https://github.com/volkerstampa/jsonype"
 
-[tool.setuptools_scm]
-version_file = "jsonype/_version.py"
-local_scheme = "poetry_setuptools_scm_plugin:no_local_scheme"
+[dependency-groups]
+dev = [
+    "pytest>=8.3.1,<9",
+    "mypy>=1.10.0,<2",
+    "sphinx>=7.3.7,<9.0.0",
+    "pycodestyle>=2.12.0,<3",
+    "mccabe>=0.7.0,<0.8",
+    "pydocstyle>=6.3.0,<7",
+    "pylint[spelling]>=3.3.8,<4",
+    "toml>=0.10.2,<0.11",
+    "vulture~=2.11",
+    "eradicate>=2.3,<4.0",
+    "sphinx-rtd-theme>=2,<4",
+    "setuptools>=70.1,<81.0",
+    "ruff>=0.4.10,<0.14.0",
+    "pyenchant>=3.2.2,<4",
+    "flake8>=7.3.0,<8",
+    "flake8-pyproject>=1.2.3,<2",
+    "flake8-eradicate>=1.5.0,<2",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "jsonype/_version.py"
+
+[tool.uv]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true }}]
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
 
 [tool.pydocstyle]
 ignore = "D100,D101,D102,D103,D104,D105,D107,D203,D213,D410,D411,D406,D413,D407"
@@ -35,6 +67,7 @@ files = "jsonype,tests"
 [tool.isort]
 line_length = 100
 src_paths = ["jsonype", "tests"]
+skip = ["_version.py", ".venv"]
 
 [tool.pylint."messages control"]
 enable = "all"
@@ -60,6 +93,7 @@ spelling-private-dict-file = ".pylint-spell-dictionary"
 
 [tool.pylint.main]
 jobs = 0
+ignore = ".venv,docs"
 
 [tool.vulture]
 min_confidence = 61
@@ -67,6 +101,7 @@ paths = ["jsonype", "tests"]
 
 [tool.flake8]
 max-line-length = 100
+extend-exclude = ".venv"
 
 [tool.ruff]
 line-length = 100
@@ -95,24 +130,8 @@ external = ["E", "R", "W", "V"]
 [tool.pytest.ini_options]
 cache_dir = "build/pytest_cache"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.1"
-mypy = "^1.10.0"
-sphinx = ">=7.3.7,<9.0.0"
-pycodestyle = "^2.12.0"
-mccabe ="^0.7.0"
-pydocstyle = "^6.3.0"
-pylint = {extras = ["spelling"], version = "^3.3.8"}
-toml = "^0.10.2"
-vulture = "^2.11"
-eradicate = ">=2.3,<4.0"
-sphinx-rtd-theme = ">=2,<4"
-setuptools = ">=70.1,<81.0"
-ruff = ">=0.4.10,<0.14.0"
-pyenchant = "^3.2.2"
-flake8 = "^7.3.0"
-flake8-pyproject = "^1.2.3"
-flake8-eradicate = "^1.5.0"
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

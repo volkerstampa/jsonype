@@ -8,17 +8,12 @@ else
   BuildOnly=false
 fi
 
-poetry self add poetry-setuptools-scm-plugin
+uv run ./build.sh
+PublishArgs=""
+"$BuildOnly" && PublishArgs="--dry-run"
 if [[ "$PypiRepository" == "testpypi" ]]
 then
-  poetry config repositories.testpypi https://test.pypi.org/legacy/
-fi
-poetry config pypi-token."$PypiRepository" "${PYPI_TOKEN}"
-poetry run ./build.sh
-"$BuildOnly" && exit 0
-if [[ "$PypiRepository" == "testpypi" ]]
-then
-  poetry --no-interaction publish --repository "$PypiRepository"
+  uv publish $PublishArgs --index "$PypiRepository"
 else
-  poetry --no-interaction publish
+  uv publish $PublishArgs
 fi

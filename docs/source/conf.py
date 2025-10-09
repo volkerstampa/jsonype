@@ -7,7 +7,7 @@ import sys
 from doctest import ELLIPSIS, NORMALIZE_WHITESPACE
 
 # noinspection PyProtectedMember
-from jsonype._version import __version__
+from jsonype._version import version
 
 sys.path.insert(0, os.path.abspath("../../"))
 
@@ -19,7 +19,7 @@ project = 'jsonype'
 # noinspection PyShadowingBuiltins
 copyright = '2023, Volker Stampa'
 author = 'Volker Stampa'
-release = __version__
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

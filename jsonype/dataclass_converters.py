@@ -1,6 +1,6 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
-from typing import Any, Callable, ClassVar, Protocol, TypeVar
+from typing import Any, ClassVar, Protocol, TypeVar
 
 from jsonype.base_types import Json, JsonPath
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,

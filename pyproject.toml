@@ -89,7 +89,7 @@ recursive = true
 evaluation = "10.0 - ((float(5 * error + warning + refactor + convention + info) / statement) * 10)"
 
 [tool.pylint.spelling]
-spelling-private-dict-file = ".pylint-spell-dictionary"
+spelling-private-dict-file = ".pylint-spell-dictionary.dic"
 
 [tool.pylint.main]
 jobs = 0

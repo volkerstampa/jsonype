@@ -54,6 +54,8 @@ class ParameterizedTypeInfo(Generic[TargetType_co]):
     def from_optionally_generic(
             cls, t: type[TargetType_co]
     ) -> "ParameterizedTypeInfo[TargetType_co]":
+        # mypy is fine with this
+        # noinspection PyTypeChecker
         return cls(t, get_origin(t), get_annotations(t) if isclass(t) else {}, get_args(t))
 
 

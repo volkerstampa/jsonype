@@ -215,7 +215,6 @@ wheels = [
 
 [[package]]
 name = "jsonype"
-version = "0"
 source = { editable = "." }
 
 [package.dev-dependencies]

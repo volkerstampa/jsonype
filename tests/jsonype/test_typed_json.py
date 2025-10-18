@@ -57,7 +57,7 @@ def test_simple_conversions(simple_obj: Any, ty: type[_T]) -> None:
 def test_simple_with_union_type(simple_obj: int | str | None) -> None:
     # Union is a type-special-form so cast to type explicitly
     assert_can_convert_from_to_json(
-        simple_obj, cast("type[int | str | None]", int | str | None))
+        simple_obj, cast("type[Union[int, str, None]]", Union[int, str, None]))  # noqa: UP007
 
 
 @mark.parametrize("simple_obj", [0, "Hello", None])

@@ -9,7 +9,8 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import Any, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast, get_args, get_origin
+from typing import (Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast, get_args,
+                    get_origin)
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
@@ -17,7 +18,8 @@ from _pytest.main import Failed
 from pytest import fail, mark, raises
 
 from jsonype import (FromJsonConversionError, FromJsonConverter, Json, JsonPath,
-                     ParameterizedTypeInfo, ToJsonConverter, TypedJson)
+                     ParameterizedTypeInfo, ToJsonConversionError, ToJsonConverter, TypedJson,
+                     UnsupportedSourceTypeError)
 from jsonype.basic_to_json_converters import SourceType_contra
 from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
@@ -69,6 +71,22 @@ def test_simple_with_union_type_new_syntax(simple_obj: int | str | None) -> None
 def test_str_with_int() -> None:
     with raises(FromJsonConversionError):
         typed_json.from_json(42, str)
+
+
+@mark.parametrize(
+    ("literal", "ty"),
+    [(2, Literal[2]), (True, Literal[True]), ("Hello", Literal["Hello"])],
+)
+def test_literal(literal: int | bool | str, ty: type[_T]) -> None:
+    assert_can_convert_from_to_json(literal, ty)
+
+
+def test_type_with_no_converter() -> None:
+    class UnsupportedType:  # pylint: disable=too-few-public-methods
+        pass
+
+    with raises(UnsupportedSourceTypeError):
+        assert_can_convert_from_to_json(UnsupportedType(), UnsupportedType)
 
 
 @mark.parametrize(
@@ -124,11 +142,19 @@ def test_inhomogeneous_mapping() -> None:
     assert_can_convert_from_to_json({"k1": 1, "k2": "Demo"}, dict[str, int | str])
 
 
-def test_mapping_with_non_str_keys() -> None:
+def test_mapping_with_non_str_key_type() -> None:
     with raises(FromJsonConversionError) as e:
         typed_json.from_json({"k1": 1}, dict[int, int])
 
     assert "No suitable converter registered" in str(e.value)
+
+
+def test_mapping_with_non_str_key() -> None:
+    non_str_key = 123
+    with raises(ToJsonConversionError) as e:
+        typed_json.to_json({non_str_key: 42})
+
+    assert str(non_str_key) in str(e.value)
 
 
 def test_typed_dict_relaxed() -> None:
@@ -157,6 +183,16 @@ def test_typed_dict_fail_if_key_missing() -> None:
     with raises(FromJsonConversionError) as exc_info:
         typed_json.from_json({"k1": 1.}, Map)
     assert "k2" in str(exc_info.value)
+
+
+def test_typed_dict_strict_fail_if_extra_key() -> None:
+    class Map(TypedDict):
+        k1: float
+        k2: int
+
+    with raises(FromJsonConversionError) as exc_info:
+        strict_typed_json.from_json({"k1": 1., "k2": 2, "extra": 3}, Map)
+    assert "extra" in str(exc_info.value)
 
 
 def test_named_tuple() -> None:

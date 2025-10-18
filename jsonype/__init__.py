@@ -36,6 +36,11 @@ from .basic_to_json_converters import (FunctionBasedToSimpleJsonConverter  # noq
 # isort: on
 from .basic_to_json_converters import ToJsonConversionError as ToJsonConversionError  # noqa: F401
 from .basic_to_json_converters import ToJsonConverter as ToJsonConverter  # noqa: F401
+
+# isort: off
+from .basic_to_json_converters import (UnsupportedSourceTypeError  # noqa: F401
+                                       as UnsupportedSourceTypeError)
+# isort: on
 from .dataclass_converters import FromDataclass as FromDataclass  # noqa: F401
 from .dataclass_converters import ToDataclass as ToDataclass  # noqa: F401
 from .named_tuple_converters import FromNamedTuple as FromNamedTuple  # noqa: F401

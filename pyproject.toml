@@ -38,6 +38,7 @@ dev = [
     "flake8>=7.3.0,<8",
     "flake8-pyproject>=1.2.3,<2",
     "flake8-eradicate>=1.5.0,<2",
+    "pytest-cov>=7.0.0",
 ]
 
 [build-system]
@@ -129,6 +130,17 @@ external = ["E", "R", "W", "V"]
 
 [tool.pytest.ini_options]
 cache_dir = "build/pytest_cache"
+addopts = "--cov --cov-fail-under=100"
+
+[tool.coverage.run]
+source = ["jsonype"]
+omit = ["jsonype/_version.py"]
+
+[tool.coverage.html]
+directory="build/htmlcov"
+
+[tool.coverage.xml]
+output="build/coverage.xml"
 
 [[tool.uv.index]]
 name = "testpypi"

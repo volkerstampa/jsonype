@@ -37,7 +37,11 @@ jobs:
       - run: |
           sudo apt-get -y update
           sudo apt-get -y install enchant-2 aspell-en
-          uv run ./check.sh --no-fix
+          uv run ./check.sh --no-fix --cov xml
+      - uses: orgoro/coverage@3f13a558c5af7376496aa4848bf0224aead366ac
+        with:
+          coverageFile: build/coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     runs-on: ubuntu-latest

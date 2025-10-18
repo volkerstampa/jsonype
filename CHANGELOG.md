@@ -3,6 +3,9 @@ Changelog
 
 ## next
 
+- Switch from poetry to uv
+- Add test coverage reporting and require 100% in CI
+
 ## 0.6.1
 
 - Include marker file py.typed to indicate that package contains type-hints

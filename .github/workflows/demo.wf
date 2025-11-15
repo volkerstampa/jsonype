@@ -1,0 +1,13 @@
+name: Build
+
+on: [push]
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      if: github.event_name == 'push' || github.event_name == 'pull_request'
+      run: echo "Running due to event: ${{ github.event_name }}"

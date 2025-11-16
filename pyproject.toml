@@ -137,6 +137,9 @@ addopts = "--cov --cov-fail-under=100"
 source = ["jsonype"]
 omit = ["jsonype/_version.py"]
 
+[tool.coverage.report]
+show_missing = true
+
 [tool.coverage.html]
 directory="build/htmlcov"
 

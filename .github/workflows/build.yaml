@@ -37,7 +37,7 @@ jobs:
       - run: |
           sudo apt-get -y update
           sudo apt-get -y install enchant-2 aspell-en
-          uv run ./check.sh --no-fix --cov xml
+          uv run ./check.sh --no-fix --cov "markdown:$GITHUB_STEP_SUMMARY"
 
   publish:
     runs-on: ubuntu-latest

@@ -3,7 +3,7 @@ from collections.abc import Callable, Mapping, Sequence
 from inspect import Parameter, signature
 from typing import Any, Generic, TypeVar, get_args
 
-from jsonype.base_types import Json, JsonNull, JsonSimple
+from jsonype.base_types import Json, JsonNull, JsonSimple, Options
 
 SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
 JsonType_co = TypeVar("JsonType_co", bound=JsonSimple, covariant=True)
@@ -42,7 +42,7 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
         """
 
     @abstractmethod
-    def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+    def convert(self, o: SourceType_contra, to_json: Callable[[Any, Options | None], Json]) -> Json:
         """Convert the given object of type ``SourceType_contra`` to an object representing JSON.
 
         Args:

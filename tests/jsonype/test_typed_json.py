@@ -9,8 +9,8 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast, get_args,
-                    get_origin)
+from typing import (Annotated, Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast,
+                    get_args, get_origin)
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
@@ -19,7 +19,7 @@ from pytest import fail, mark, raises
 
 from jsonype import (FromJsonConversionError, FromJsonConverter, Json, JsonPath,
                      ParameterizedTypeInfo, ToJsonConversionError, ToJsonConverter, TypedJson,
-                     UnsupportedSourceTypeError)
+                     UnsupportedSourceTypeError, opts)
 from jsonype.basic_to_json_converters import SourceType_contra
 from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
@@ -289,6 +289,19 @@ def test_with_appended_to_converter_for_custom_type() -> None:
 
     tj = typed_json.append([], [MyTypeToString()])
     assert tj.to_json(MyType()) == MyType.__name__
+
+
+def test_annotated_with_custom_serializer() -> None:
+    @dataclass
+    class Data:
+        number: Annotated[int, opts(from_json=int, to_json=str)]
+
+    expected = Data(5)
+    js = typed_json.to_json(expected)
+    actual = typed_json.from_json(js, Data)
+
+    assert actual == expected
+    assert js == {"number": str(expected.number)}
 
 
 def test_with_no_suitable_from_converter() -> None:

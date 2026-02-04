@@ -317,7 +317,7 @@ def test_random_objects() -> None:
 def test_random_objects_with_failure() -> None:
     for _ in range(500):
         ty, erroneous_json, error = _random_typed_object_with_failure(8)
-        unexpected_result = None
+        unexpected_result: Any = None
         try:
             with raises(FromJsonConversionError) as e:
                 # mypy is fine with this

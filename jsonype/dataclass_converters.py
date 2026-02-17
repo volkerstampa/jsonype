@@ -2,11 +2,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
 from typing import Any, ClassVar, Protocol, TypeVar
 
-from jsonype.base_types import Json, JsonPath
+from jsonype.base_types import Json, JsonPath, opts_from
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,
                                                 FromJsonConverter, ParameterizedTypeInfo,
                                                 TargetType_co)
-from jsonype.basic_to_json_converters import ToJsonConverter
+from jsonype.basic_to_json_converters import ContainerElementToJson, ToJsonConverter
 
 
 # Only "known" field of a dataclass
@@ -73,5 +73,8 @@ class FromDataclass(ToJsonConverter[DataclassTarget_contra]):
     def can_convert(self, o: Any) -> bool:
         return is_dataclass(o) and not isinstance(o, type)
 
-    def convert(self, o: DataclassTarget_contra, to_json: Callable[[Any], Json]) -> Json:
-        return {field.name: to_json(getattr(o, field.name)) for field in fields(o)}
+    def convert(
+            self, o: DataclassTarget_contra, to_json: ContainerElementToJson
+    ) -> Json:
+        return {field.name: to_json(getattr(o, field.name), opts_from(field.type))
+                for field in fields(o)}

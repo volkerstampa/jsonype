@@ -1,7 +1,7 @@
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import groupby
-from typing import TypeAlias
+from typing import Generic, TypeAlias, TypeVar
 
 JsonNull: TypeAlias = None
 JsonSimple: TypeAlias = int | float | str | bool
@@ -33,3 +33,22 @@ class JsonPath:
 
     def append(self, e: str | int) -> "JsonPath":
         return JsonPath((*self._elements, e))
+
+
+_TargetType = TypeVar("_TargetType")
+
+
+@dataclass
+class Options(Generic[_TargetType]):
+    from_json: Callable[[Json], _TargetType]
+    to_json: Callable[[_TargetType], Json]
+
+
+def opts(
+        from_json: Callable[[Json], _TargetType], to_json: Callable[[_TargetType], Json]
+) -> Options[_TargetType]:
+    return Options(from_json, to_json)
+
+
+def opts_from(ty: type | str) -> Options[_TargetType] | None:
+    return next((o for o in getattr(ty, "__metadata__", ()) if isinstance(o, Options)), None)

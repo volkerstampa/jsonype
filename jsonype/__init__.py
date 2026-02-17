@@ -3,6 +3,7 @@
 # pylint: disable=useless-import-alias
 from .base_types import Json as Json  # noqa: F401
 from .base_types import JsonPath as JsonPath  # noqa: F401
+from .base_types import opts as opts  # noqa: F401
 
 # isort: off
 from .basic_from_json_converters import (FromJsonConversionError  # noqa: F401

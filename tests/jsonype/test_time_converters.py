@@ -1,10 +1,15 @@
 # pylint: disable=redefined-outer-name
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, cast
 
 from pytest import fixture, raises
 
 from jsonype import (FromDatetime, FromJsonConversionError, FromJsonConverter, JsonPath,
                      ParameterizedTypeInfo, ToDatetime, ToJsonConverter, TypedJson)
+
+if TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from jsonype.basic_to_json_converters import ContainerElementToJson
 
 
 @fixture
@@ -79,4 +84,5 @@ def test_from_datetime_can_convert(
 def test_from_datetime_convert(
         from_datetime: ToJsonConverter[datetime], timestamp: datetime, typed_json: TypedJson
 ) -> None:
-    assert from_datetime.convert(timestamp, typed_json.to_json) == timestamp.isoformat()
+    assert (from_datetime.convert(timestamp, cast("ContainerElementToJson", typed_json.to_json))
+            == timestamp.isoformat())

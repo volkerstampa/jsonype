@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from jsonype.base_types import Json, JsonPath
+from jsonype.base_types import Json, JsonPath, Options
 from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
                                                 ParameterizedTypeInfo, ToAny, ToList, ToLiteral,
                                                 ToMapping, ToNone, ToSimple, ToTuple,
@@ -14,7 +14,12 @@ from jsonype.simple_str_based_converters import (FromBytes, FromPath, FromUrl, F
                                                  ToPath, ToUrl, ToUUID)
 from jsonype.time_converters import FromDate, FromDatetime, FromTime, ToDate, ToDatetime, ToTime
 
+if TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from jsonype.basic_to_json_converters import ContainerElementToJson
+
 TargetType = TypeVar("TargetType")
+JsonType = TypeVar("JsonType")
 
 
 class TypedJson:
@@ -110,7 +115,7 @@ class TypedJson:
         self._from_json_converters = from_json_converters
         self._to_json_converters = to_json_converters
 
-    def to_json(self, o: Any) -> Json:
+    def to_json(self, o: Any, opts: Options[Any] | None = None) -> Json:
         """Convert the given object to a JSON-representation.
 
         The JSON-representation can afterward be converted to a string containing
@@ -118,18 +123,23 @@ class TypedJson:
 
         Args:
             o: The object to be converted.
+            opts: Options or hints for the conversion
         Returns:
             The JSON-representation.
         Raises:
             ValueError: if the object cannot be converted to a JSON-representation
                 as no suitable converter exists for the object's type.
         """
+        if opts:
+            return opts.to_json(o)
         converter = next((conv for conv in self._to_json_converters if
                           conv.can_convert(o)),
                          None)
         if not converter:
             raise UnsupportedSourceTypeError(o)
-        return converter.convert(o, self.to_json)
+        # mypy derives a Callable type for self.to_json, but Callables cannot define
+        # optional parameters
+        return converter.convert(o, cast("ContainerElementToJson", self.to_json))
 
     def from_json(self, js: Json, target_type: type[TargetType]) -> TargetType:
         """Convert the given JSON-representation to an object of the given type.
@@ -152,6 +162,8 @@ class TypedJson:
             self, js: Json, target_type: type[TargetType], path: JsonPath
     ) -> TargetType:
         target_type_info = ParameterizedTypeInfo.from_optionally_generic(target_type)
+        if target_type_info.opts:
+            return target_type_info.opts.from_json(js)
         # According to mypy the type is correct (type | None instead of ParamSpec)
         # noinspection PyTypeChecker
         converter = next((conv for conv in self._from_json_converters if

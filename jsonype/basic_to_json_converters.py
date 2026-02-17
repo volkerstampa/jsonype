@@ -1,12 +1,18 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from inspect import Parameter, signature
-from typing import Any, Generic, TypeVar, get_args
+from typing import Any, Generic, Protocol, TypeVar, get_args
 
-from jsonype.base_types import Json, JsonNull, JsonSimple
+from jsonype.base_types import Json, JsonNull, JsonSimple, Options
 
 SourceType_contra = TypeVar("SourceType_contra", contravariant=True)
 JsonType_co = TypeVar("JsonType_co", bound=JsonSimple, covariant=True)
+
+
+# pylint: disable=too-few-public-methods
+class ContainerElementToJson(Protocol):
+    def __call__(self, _element: Any, _opts: Options[Any] | None = None) -> Json:
+        ...
 
 
 class ToJsonConversionError(ValueError):
@@ -42,7 +48,7 @@ class ToJsonConverter(ABC, Generic[SourceType_contra]):
         """
 
     @abstractmethod
-    def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+    def convert(self, o: SourceType_contra, to_json: ContainerElementToJson) -> Json:
         """Convert the given object of type ``SourceType_contra`` to an object representing JSON.
 
         Args:
@@ -79,7 +85,7 @@ class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
         >>> converter = FunctionBasedToSimpleJsonConverter(abbreviate_str)
         >>> print(converter.convert(
         ...     "Long String",
-        ...     lambda a: None
+        ...     lambda a, b = None: None
         ... ))
         Lo...ng
         >>> # if the function signature is untyped, the input type can be provided explicitly:
@@ -104,7 +110,9 @@ class FunctionBasedToSimpleJsonConverter(ToJsonConverter[SourceType_contra]):
     def can_convert(self, o: Any) -> bool:
         return isinstance(o, self._input_type)
 
-    def convert(self, o: SourceType_contra, _to_json: Callable[[Any], Json]) -> Json:
+    def convert(
+            self, o: SourceType_contra, _to_json: ContainerElementToJson
+    ) -> Json:
         try:
             return self._f(o)
         except ValueError as e:
@@ -120,7 +128,7 @@ class FromNone(ToJsonConverter[JsonNull]):
     def can_convert(self, o: Any) -> bool:
         return o is None
 
-    def convert(self, o: JsonNull, to_json: Callable[[Any], Json]) -> JsonNull:
+    def convert(self, o: JsonNull, to_json: ContainerElementToJson) -> JsonNull:
         return None
 
 
@@ -133,7 +141,7 @@ class FromSimple(ToJsonConverter[JsonSimple]):
     def can_convert(self, o: Any) -> bool:
         return isinstance(o, get_args(JsonSimple))
 
-    def convert(self, o: JsonSimple, to_json: Callable[[Any], Json]) -> JsonSimple:
+    def convert(self, o: JsonSimple, to_json: ContainerElementToJson) -> JsonSimple:
         return o
 
 
@@ -147,7 +155,7 @@ class FromSequence(ToJsonConverter[Sequence[Any]]):
     def can_convert(self, o: Any) -> bool:
         return isinstance(o, Sequence)
 
-    def convert(self, o: Sequence[Any], to_json: Callable[[Any], Json]) -> Json:
+    def convert(self, o: Sequence[Any], to_json: ContainerElementToJson) -> Json:
         return [to_json(e) for e in o]
 
 
@@ -161,7 +169,7 @@ class FromMapping(ToJsonConverter[Mapping[str, Any]]):
     def can_convert(self, o: Any) -> bool:
         return isinstance(o, Mapping)
 
-    def convert(self, o: Mapping[str, Any], to_json: Callable[[Any], Json]) -> Json:
+    def convert(self, o: Mapping[str, Any], to_json: ContainerElementToJson) -> Json:
         """Convert the given object of type :class:`typing.Mapping` to an object representing JSON.
 
         Raises:

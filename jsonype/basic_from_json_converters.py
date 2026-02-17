@@ -3,10 +3,10 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from inspect import Parameter, Signature, get_annotations, isclass, signature
 from types import NoneType, UnionType
-from typing import (Any, Generic, Literal, Protocol, TypeVar, Union, cast, get_args, get_origin,
-                    runtime_checkable)
+from typing import (Annotated, Any, Generic, Literal, Protocol, TypeVar, Union, cast, get_args,
+                    get_origin, runtime_checkable)
 
-from jsonype.base_types import Json, JsonPath, JsonSimple
+from jsonype.base_types import Json, JsonPath, JsonSimple, Options, opts_from
 
 TargetType_co = TypeVar("TargetType_co", covariant=True)
 ContainedTargetType_co = TypeVar("ContainedTargetType_co", covariant=True)
@@ -27,6 +27,12 @@ class FromJsonConversionError(ValueError):
         return self._path
 
 
+def unnotate(ty: type[TargetType_co], origin: type | None) -> type[TargetType_co]:
+    # Annotated is a Callable and yes we want to compare against it
+    return (getattr(ty, "__origin__", ty) if origin is Annotated  # type: ignore[comparison-overlap]
+            else ty)
+
+
 @dataclass(frozen=True)
 class ParameterizedTypeInfo(Generic[TargetType_co]):
     """Information about a parameterized type.
@@ -42,21 +48,29 @@ class ParameterizedTypeInfo(Generic[TargetType_co]):
         generic_args: just the arguments of the generic type as a tuple, for example ``(str, int)``.
             ``()`` if ``full_type`` is not a generic type.
             Can be computed with :func:`typing.get_args`.
-
+        opts: First Options instance found in metadata if ``full_type`` is ``Annotated``.
     """
 
     full_type: type[TargetType_co]
     origin_of_generic: type | None
     annotations: Mapping[str, type]
     generic_args: Sequence[type]
+    opts: Options[TargetType_co] | None
 
     @classmethod
     def from_optionally_generic(
             cls, t: type[TargetType_co]
     ) -> "ParameterizedTypeInfo[TargetType_co]":
+        origin = get_origin(t)
         # mypy is fine with this
         # noinspection PyTypeChecker
-        return cls(t, get_origin(t), get_annotations(t) if isclass(t) else {}, get_args(t))
+        return cls(
+            unnotate(t, origin),
+            origin,
+            get_annotations(t) if isclass(t) else {},
+            get_args(t),
+            opts_from(t),
+        )
 
 
 class FromJsonConverter(ABC, Generic[TargetType_co, ContainedTargetType_co]):

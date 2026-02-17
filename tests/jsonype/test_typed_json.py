@@ -9,8 +9,8 @@ from random import choice, choices, gauss, randint, randrange, uniform
 from string import ascii_letters, digits, printable
 from sys import float_info
 from types import NoneType
-from typing import (Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast, get_args,
-                    get_origin)
+from typing import (Annotated, Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast,
+                    get_args, get_origin)
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
@@ -19,7 +19,7 @@ from pytest import fail, mark, raises
 
 from jsonype import (FromJsonConversionError, FromJsonConverter, Json, JsonPath,
                      ParameterizedTypeInfo, ToJsonConversionError, ToJsonConverter, TypedJson,
-                     UnsupportedSourceTypeError)
+                     UnsupportedSourceTypeError, opts)
 from jsonype.basic_to_json_converters import SourceType_contra
 from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
@@ -291,6 +291,19 @@ def test_with_appended_to_converter_for_custom_type() -> None:
     assert tj.to_json(MyType()) == MyType.__name__
 
 
+def test_annotated_with_custom_serializer() -> None:
+    @dataclass
+    class Data:
+        number: Annotated[int, opts(from_json=int, to_json=str)]
+
+    expected = Data(5)
+    js = typed_json.to_json(expected)
+    actual = typed_json.from_json(js, Data)
+
+    assert actual == expected
+    assert js == {"number": str(expected.number)}
+
+
 def test_with_no_suitable_from_converter() -> None:
     with raises(FromJsonConversionError) as e:
         TypedJson([], []).from_json(42, int)
@@ -333,11 +346,11 @@ def test_random_objects_with_failure() -> None:
 
 
 def assert_from_json_conversion_error_equals(
-        a: FromJsonConversionError, b: FromJsonConversionError
+        expected: FromJsonConversionError, actual: FromJsonConversionError
 ) -> None:
     # combining test-assertion actually improve the error message as pytest
     # analyses the entire expression
-    assert a.args[1:3] == b.args[1:3] and a.path == b.path  # noqa: PT018
+    assert expected.args[1:3] == actual.args[1:3] and expected.path == actual.path  # noqa: PT018
 
 
 def assert_can_convert_from_to_json(obj: Any, ty: type[_T]) -> None:
@@ -362,6 +375,7 @@ def assert_can_convert_from_to_json_relaxed(inp: Any, expected: Any, ty: type[_T
 
 
 def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonConversionError]:
+    # See comment below on removal of _random_tuple_with_ellipsis why this is required
     random_tuple_with_ellipsis_not_at_first_pos = cast(
         "ObjectFactory[tuple[Any]]",
         partial(

@@ -27,10 +27,18 @@ from jsonype.named_tuple_converters import NamedTupleTarget_co
 _T = TypeVar("_T")
 
 
-ObjectFactory: TypeAlias = Callable[[int, Sequence["ObjectFactory[_T]"]], tuple[_T, type[_T]]]
+ObjectFactory: TypeAlias = Callable[[int, Sequence["ObjectFactory[_T]"]], tuple[_T, type[_T], Json]]
 
 typed_json = TypedJson.default()
 strict_typed_json = TypedJson.default(strict=True)
+
+
+# pylint: disable=too-few-public-methods
+class _UndefinedJson:
+    pass
+
+
+_UNDEFINED_JSON = _UndefinedJson()
 
 
 @mark.parametrize(
@@ -353,7 +361,8 @@ def assert_from_json_conversion_error_equals(
     assert expected.args[1:3] == actual.args[1:3] and expected.path == actual.path  # noqa: PT018
 
 
-def assert_can_convert_from_to_json(obj: Any, ty: type[_T]) -> None:
+def assert_can_convert_from_to_json(
+        obj: Any, ty: type[_T], _js: Json | _UndefinedJson = _UNDEFINED_JSON) -> None:
     try:
         js = typed_json.to_json(obj)
         js = loads(dumps(js))
@@ -396,7 +405,7 @@ def _random_typed_object_with_failure(size: int) -> tuple[type, Json, FromJsonCo
         # 1. generate ellipsis only after the first element and 2. replace always the first element
         - {_none, _random_sequence, _random_map, _random_tuple_with_ellipsis}
     )
-    obj, ty = cast("tuple[object, type]", _random_typed_object(size, factories))
+    obj, ty, _ = cast("tuple[object, type, Json]", _random_typed_object(size, factories))
     js = typed_json.to_json(obj)
     js, error = _json_with_error(js, JsonPath(), ty)
     return ty, js, error
@@ -514,7 +523,7 @@ def _typed_mapping_with_error(
 
 def _random_typed_object(size: int,
                          factories: Sequence[ObjectFactory[_T]] | None = None) \
-        -> tuple[_T, type[_T]]:
+        -> tuple[_T, type[_T], Json]:
     factories = factories or _all_types_factories()
     return choice(factories)(size, factories)
 
@@ -551,37 +560,38 @@ def _all_types_factories() -> Sequence[ObjectFactory[Any]]:
     return tuple(_ambiguous_types_factories()) + tuple(_unambiguous_types_factories())
 
 
-def _random_int(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[int, type[int]]:
-    return randint(-2 ** 63, 2 ** 63 - 1), int
+def _random_int(
+        _size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[int, type[int], Json]:
+    return randint(-2 ** 63, 2 ** 63 - 1), int, None
 
 
 def _random_float(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
-        -> tuple[float, type[float]]:
+        -> tuple[float, type[float], Json]:
     f = choices([-float_info.max,
                 uniform(-float_info.max, 0),
                 gauss(0, 10),
                 uniform(0, float_info.max),
                 float_info.max],
                 weights=[1, 3, 5, 3, 1])
-    return f[0], float
+    return f[0], float, None
 
 
 def _random_bool(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
-        -> tuple[bool, type[bool]]:
-    return bool(randint(0, 1)), bool
+        -> tuple[bool, type[bool], Json]:
+    return bool(randint(0, 1)), bool, None
 
 
-def _none(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[None, Any]:
-    return None, Any
+def _none(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[None, Any, Json]:
+    return None, Any, None
 
 
-def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[str, type[str]]:
-    return "".join(choices(printable, k=randrange(size))), str
+def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[str, type[str], Json]:
+    return "".join(choices(printable, k=randrange(size))), str, None
 
 
 def _random_datetime(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
-) -> tuple[datetime, type[datetime]]:
+) -> tuple[datetime, type[datetime], Json]:
     min_datetime = datetime.min.replace(tzinfo=UTC)
     max_datetime = datetime.max.replace(tzinfo=UTC)
     # conversion to from float with (from)timestamp() is not precise due to rounding errors
@@ -594,22 +604,22 @@ def _random_datetime(
     if isinstance(result, float):
         result = datetime.fromtimestamp(result, tz=UTC)
     assert isinstance(result, datetime)
-    return result, datetime
+    return result, datetime, None
 
 
 def _random_date(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
-) -> tuple[date, type[date]]:
+) -> tuple[date, type[date], Json]:
     result = choices([date.min.toordinal(),
                       randint(date.min.toordinal(), date.max.toordinal()),
                       date.max.toordinal()],
                      weights=[1, 5, 1])[0]
-    return date.fromordinal(result), date
+    return date.fromordinal(result), date, None
 
 
 def _random_time(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
-) -> tuple[time, type[time]]:
+) -> tuple[time, type[time], Json]:
     result = choices([time.min,
                       time(hour=randrange(24),
                            minute=randrange(60),
@@ -617,24 +627,31 @@ def _random_time(
                            microsecond=randrange(1000000)),
                       time.max],
                      weights=[1, 5, 1])[0]
-    return result, time
+    return result, time, None
 
 
-def _random_uuid(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[UUID, type[UUID]]:
-    return uuid4(), UUID
+def _random_uuid(
+        _size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[UUID, type[UUID], Json]:
+    return uuid4(), UUID, None
 
 
-def _random_path(size: int, factories: Sequence[ObjectFactory[Any]]) -> tuple[Path, type[Path]]:
+def _random_path(
+        size: int, factories: Sequence[ObjectFactory[Any]]
+) -> tuple[Path, type[Path], Json]:
     segments = (_random_str(size, factories)[0] for _ in range(randint(1, size)))
-    return Path().joinpath(*segments), Path
+    return Path().joinpath(*segments), Path, None
 
 
-def _random_bytes(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[bytes, type[bytes]]:
-    return bytes(randint(0, 255) for _ in range(randint(1, size))), bytes
+def _random_bytes(
+        size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[bytes, type[bytes], Json]:
+    return bytes(randint(0, 255) for _ in range(randint(1, size))), bytes, None
 
 
-def _random_url(size: int,
-                _factories: Sequence[ObjectFactory[Any]]) -> tuple[SplitResult, type[SplitResult]]:
+def _random_url(
+        size: int, _factories: Sequence[ObjectFactory[Any]]
+) -> tuple[SplitResult, type[SplitResult], Json]:
     def random_ascii_str() -> str:
         return "".join(choices(ascii_letters, k=randrange(size)))
 
@@ -644,42 +661,44 @@ def _random_url(size: int,
                        netloc=random_ascii_str(),
                        path=f"/{random_ascii_str()}",
                        query=random_ascii_str(),
-                       fragment=random_ascii_str()), SplitResult
+                       fragment=random_ascii_str()), SplitResult, None
 
 
 def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Sequence[_T], type[Sequence[_T]]]:
-    seq, types = _random_values(size, _unambiguous_types_factories())
+        -> tuple[Sequence[_T], type[Sequence[_T]], Json]:
+    seq, types, js = _random_values(size, _unambiguous_types_factories())
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
     element_type: TypeAlias = cast("type", Union[*types] if seq else Any)
-    return list(seq), Sequence[element_type]
+    return list(seq), Sequence[element_type], js
 
 
 def _random_homogeneous_sequence(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Sequence[_T], type[Sequence[_T]]]:
-    seq, types = _random_values(size, factories)
+        -> tuple[Sequence[_T], type[Sequence[_T]], Json]:
+    seq, types, js = _random_values(size, factories)
     # Union[types[0]] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
     element_type: TypeAlias = cast("type", types[0] if seq else Any)
-    return [e for e, ty in zip(seq, types, strict=False) if ty == types[0]], Sequence[element_type]
+    return ([e for e, ty in zip(seq, types, strict=False) if ty == types[0]],
+            Sequence[element_type],
+            js)
 
 
 def _random_untyped_list(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Sequence[_T], type[list[Any]]]:
+        -> tuple[Sequence[_T], type[list[Any]], Json]:
     unambiguous_factories = tuple(
         frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
-    seq, _types = _random_values(size, unambiguous_factories)
-    return list(seq), list
+    seq, _types, js = _random_values(size, unambiguous_factories)
+    return list(seq), list, js
 
 
 def _random_tuple(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[tuple[_T, ...], type[tuple[_T, ...]]]:
-    seq, types = _random_values(size, factories)
+        -> tuple[tuple[_T, ...], type[tuple[_T, ...]], Json]:
+    seq, types, js = _random_values(size, factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast("type[tuple[_T, ...]]", tuple[*types])  # type: ignore[valid-type]
+    return tuple(seq), cast("type[tuple[_T, ...]]", tuple[*types]), js  # type: ignore[valid-type]
 
 
 def _insert_random_ellipsis(types: Sequence[type], allow_ellipsis_at_first_pos: bool = True) \
@@ -698,61 +717,75 @@ def _random_tuple_with_ellipsis(
         size: int,
         factories: Sequence[ObjectFactory[_T]],
         insert_random_ellipsis: Callable[[Sequence[type]], Sequence[type]] = _insert_random_ellipsis
-) -> tuple[tuple[_T, ...], type[tuple[_T, ...]]]:
+) -> tuple[tuple[_T, ...], type[tuple[_T, ...]], Json]:
     unambiguous_factories = tuple(
         frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
-    seq, types = _random_values(size, unambiguous_factories)
+    seq, types, js = _random_values(size, unambiguous_factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast("type[tuple[_T, ...]]",
-                            tuple[*insert_random_ellipsis(types)])  # type: ignore[misc]
+    return (
+        tuple(seq),
+        cast("type[tuple[_T, ...]]", tuple[*insert_random_ellipsis(types)]),  # type: ignore[misc]
+        list(js)
+    )
 
 
 def _random_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Mapping[str, _T], type[Mapping[str, _T]]]:
-    vals, types = _random_values(size, _unambiguous_types_factories())
+        -> tuple[Mapping[str, _T], type[Mapping[str, _T]], Json]:
+    unambiguous_factories = tuple(
+        frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
+    vals, types, json_vals = _random_values(size, unambiguous_factories)
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise value_types is not a valid type
     # noinspection PyTypeHints
     value_types: TypeAlias = cast("type", Union[*types] if vals else Any)
-    return ({_random_str(size, factories)[0]: val for val in vals},
-            Mapping[str, value_types])
+    keys = [_random_symbol() for _ in vals]
+    return (dict(zip(keys, vals, strict=False)),
+            Mapping[str, value_types],
+            dict(zip(keys, json_vals, strict=False)))
 
 
 def _random_homogeneous_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Mapping[str, _T], type[Mapping[str, _T]]]:
-    vals, types = _random_values(size, factories)
-    # Union[*types] is not a valid type so cast to a type
+        -> tuple[Mapping[str, _T], type[Mapping[str, _T]], Json]:
+    vals, types, json_vals = _random_values(size, factories)
+    keys_and_vals_and_json_vals = [
+        (_random_symbol(), val, json_val)
+        for val, ty, json_val in zip(vals, types, json_vals, strict=False) if ty == types[0]
+    ]
+    # types[0] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
     value_type: TypeAlias = cast("type", types[0] if vals else Any)
-    return ({_random_str(size, factories)[0]: val
-             for val, ty in zip(vals, types, strict=False) if ty == types[0]},
-            Mapping[str, value_type])
+    return ({key: val for key, val, _ in keys_and_vals_and_json_vals},
+            Mapping[str, value_type],
+            {key: json_val for key, _, json_val in keys_and_vals_and_json_vals})
 
 
 def _random_untyped_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Mapping[str, _T], type[Mapping[str, Any]]]:
+        -> tuple[Mapping[str, _T], type[Mapping[str, Any]], Json]:
     unambiguous_factories = tuple(
         frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
-    vals, _types = _random_values(size, unambiguous_factories)
-    return {_random_str(size, factories)[0]: val for val in vals}, Mapping
+    vals, _types, json_vals = _random_values(size, unambiguous_factories)
+    keys = [_random_symbol() for _ in vals]
+    return dict(zip(keys, vals, strict=False)), Mapping, dict(zip(keys, json_vals, strict=False))
 
 
 def _random_typed_map(size: int, factories: Sequence[ObjectFactory[Any]]) \
-        -> tuple[Mapping[str, Any], type[Mapping[str, Any]]]:
-    vals, types = _random_values(size, factories)
+        -> tuple[Mapping[str, Any], type[Mapping[str, Any]], Json]:
+    vals, types, json_vals = _random_values(size, factories)
     keys = [_random_symbol() for _ in vals]
     # https://github.com/python/mypy/issues/7178
     map_type = TypedDict(_random_symbol(),  # type: ignore[misc] # noqa: UP013
                          dict(zip(keys, types, strict=False)))
     # the types of vals are in types, and they are zipped in the same way with
     # the keys as the vals are zipped here so this should actually be safe.
-    return map_type(**dict(zip(keys, vals, strict=False))), map_type  # type: ignore[typeddict-item]
+    return (map_type(**dict(zip(keys, vals, strict=False))),  # type: ignore[typeddict-item]
+            map_type,
+            dict(zip(keys, json_vals, strict=False)))
 
 
 def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
-        -> tuple[NamedTupleTarget_co, type[NamedTupleTarget_co]]:
-    vals, types = _random_values(size, factories)
+        -> tuple[NamedTupleTarget_co, type[NamedTupleTarget_co], Json]:
+    vals, types, json_vals = _random_values(size, factories)
     keys = [_random_symbol() for _ in vals]
     # Functional syntax to construct NamedTuple classes -> _make exists
     namedtuple_type = \
@@ -760,17 +793,21 @@ def _random_named_tuple(size: int, factories: Sequence[ObjectFactory[Any]]) \
              NamedTuple(_random_symbol(), list(zip(keys, types, strict=False))))
     # _make is actually public
     # noinspection PyProtectedMember
-    return namedtuple_type._make(vals), namedtuple_type  # pylint: disable=no-member
+    return (namedtuple_type._make(vals),  # pylint: disable=no-member
+            namedtuple_type,
+            dict(zip(keys, json_vals, strict=False)))
 
 
 def _random_dataclass(size: int, factories: Sequence[ObjectFactory[Any]]) \
-        -> tuple[DataclassTarget_co, type[DataclassTarget_co]]:
-    vals, types = _random_values(size, factories)
+        -> tuple[DataclassTarget_co, type[DataclassTarget_co], Json]:
+    vals, types, json_vals = _random_values(size, factories)
     keys = [_random_symbol() for _ in vals]
     dataclass_type = make_dataclass(_random_symbol(), list(zip(keys, types, strict=False)))
     # dataclass_type is a dataclass-type as it was created with make_dataclass
     # noinspection PyTypeChecker
-    return dataclass_type(**dict(zip(keys, vals, strict=False))), dataclass_type
+    return (dataclass_type(**dict(zip(keys, vals, strict=False))),
+            dataclass_type,
+            dict(zip(keys, json_vals, strict=False)))
 
 
 def _random_symbol() -> str:
@@ -778,12 +815,12 @@ def _random_symbol() -> str:
 
 
 def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
-        -> tuple[Sequence[_T], Sequence[type[_T]]]:
+        -> tuple[Sequence[_T], Sequence[type[_T]], Sequence[Json]]:
     previous_types: list[type[_T]] = []
 
-    def add_to_previous(val: Any, ty: type[_T]) -> tuple[_T, type[_T]]:
+    def add_to_previous(val: Any, ty: type[_T], js: Json) -> tuple[_T, type[_T], Json]:
         previous_types.append(ty)
-        return val, ty
+        return val, ty, js
 
     def cannot_convert(val: _T, ty: type[_T]) -> bool:
         try:
@@ -795,15 +832,15 @@ def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
     def cannot_convert_to_previous_type(val: _T) -> bool:
         return all(cannot_convert(val, ty) for ty in previous_types)
 
-    values_with_types: Iterable[tuple[_T, type[_T]]] = \
+    values_with_types_and_json: Iterable[tuple[_T, type[_T], Json]] = \
         (_random_typed_object(size // 2, factories) for _ in range(randrange(size)))
     # zip is an Iterable which has only a single type-parameter (i.e. must be homogeneous)
     # but when some (Any, type) tuples are zipped we do get a ([Any], [type])
-    value_and_types = cast(
-        "tuple[Sequence[_T], Sequence[type[_T]]]",
-        tuple(zip(*(add_to_previous(val, ty) for val, ty in values_with_types if
+    value_and_types_and_json = cast(
+        "tuple[Sequence[_T], Sequence[type[_T]], Sequence[Json]]",
+        tuple(zip(*(add_to_previous(val, ty, js) for val, ty, js in values_with_types_and_json if
               cannot_convert_to_previous_type(val)), strict=False)))
-    return value_and_types or ((), ())
+    return value_and_types_and_json or ((), (), ())
 
 
 class _StringToFloat(FromJsonConverter[float, None]):

@@ -2,10 +2,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import MISSING, Field, fields, is_dataclass
 from typing import Any, ClassVar, Protocol, TypeVar
 
-from jsonype.base_types import Json, JsonPath, opts_from
+from jsonype.base_types import Json, JsonPath, ParameterizedTypeInfo, TargetType_co
 from jsonype.basic_from_json_converters import (ContainedTargetType_co, FromJsonConversionError,
-                                                FromJsonConverter, ParameterizedTypeInfo,
-                                                TargetType_co)
+                                                FromJsonConverter)
 from jsonype.basic_to_json_converters import ContainerElementToJson, ToJsonConverter
 
 
@@ -70,11 +69,13 @@ class FromDataclass(ToJsonConverter[DataclassTarget_contra]):
     :class:`ToJsonConverter`.
     """
 
-    def can_convert(self, o: Any) -> bool:
+    def can_convert(self, o: Any,
+                    _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> bool:
         return is_dataclass(o) and not isinstance(o, type)
 
-    def convert(
-            self, o: DataclassTarget_contra, to_json: ContainerElementToJson
-    ) -> Json:
-        return {field.name: to_json(getattr(o, field.name), opts_from(field.type))
+    def convert(self, o: DataclassTarget_contra,
+                to_json: ContainerElementToJson,
+                source_type_info: ParameterizedTypeInfo[Any] | None = None) -> Json:
+        type_hints = source_type_info.annotations if source_type_info else {}
+        return {field.name: to_json(getattr(o, field.name), type_hints.get(field.name))
                 for field in fields(o)}

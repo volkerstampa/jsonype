@@ -1,3 +1,4 @@
+from base64 import b64encode
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, make_dataclass
 from datetime import UTC, date, datetime, time, timedelta, timezone
@@ -11,7 +12,7 @@ from sys import float_info
 from types import NoneType
 from typing import (Annotated, Any, Literal, NamedTuple, TypeAlias, TypedDict, TypeVar, Union, cast,
                     get_args, get_origin)
-from urllib.parse import SplitResult, urlsplit
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
 from _pytest.main import Failed
@@ -19,7 +20,8 @@ from pytest import fail, mark, raises
 
 from jsonype import (FromJsonConversionError, FromJsonConverter, Json, JsonPath,
                      ParameterizedTypeInfo, ToJsonConversionError, ToJsonConverter, TypedJson,
-                     UnsupportedSourceTypeError, opts)
+                     UnsupportedSourceTypeError, options)
+from jsonype.base_types import Options, options_from
 from jsonype.basic_to_json_converters import SourceType_contra
 from jsonype.dataclass_converters import DataclassTarget_co
 from jsonype.named_tuple_converters import NamedTupleTarget_co
@@ -74,6 +76,11 @@ def test_simple_with_union_type(simple_obj: int | str | None) -> None:
 def test_simple_with_union_type_new_syntax(simple_obj: int | str | None) -> None:
     assert_can_convert_from_to_json(
         simple_obj, cast("type[int | str | None]", int | str | None))
+
+
+def test_union_with_error() -> None:
+    with raises(FromJsonConversionError):
+        typed_json.from_json("42", cast("type[int | float]", int | float))
 
 
 def test_str_with_int() -> None:
@@ -183,6 +190,13 @@ def test_typed_dict() -> None:
     assert_can_convert_from_to_json({"k1": 1., "k2": 2}, Map)
 
 
+def test_typed_dict_with_annotated_value() -> None:
+    class Map(TypedDict):
+        k1: Annotated[int, options(from_json=int, to_json=str)]
+
+    assert_can_convert_from_to_json(Map(k1=1), Map, {"k1": "1"})
+
+
 def test_typed_dict_fail_if_key_missing() -> None:
     class Map(TypedDict):
         k1: float
@@ -289,10 +303,13 @@ def test_with_appended_to_converter_for_custom_type() -> None:
         pass
 
     class MyTypeToString(ToJsonConverter[MyType]):
-        def can_convert(self, o: Any) -> bool:
+        def can_convert(self, o: Any,
+                        _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> bool:
             return isinstance(o, MyType)
 
-        def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+        def convert(self, o: SourceType_contra,
+                    to_json: Callable[[Any], Json],
+                    _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> Json:
             return MyType.__name__
 
     tj = typed_json.append([], [MyTypeToString()])
@@ -302,7 +319,7 @@ def test_with_appended_to_converter_for_custom_type() -> None:
 def test_annotated_with_custom_serializer() -> None:
     @dataclass
     class Data:
-        number: Annotated[int, opts(from_json=int, to_json=str)]
+        number: Annotated[int, options(from_json=int, to_json=str)]
 
     expected = Data(5)
     js = typed_json.to_json(expected)
@@ -362,14 +379,20 @@ def assert_from_json_conversion_error_equals(
 
 
 def assert_can_convert_from_to_json(
-        obj: Any, ty: type[_T], _js: Json | _UndefinedJson = _UNDEFINED_JSON) -> None:
+        obj: Any, ty: type[_T], expected_json: Json | _UndefinedJson = _UNDEFINED_JSON) -> None:
+    js: Json = None
     try:
-        js = typed_json.to_json(obj)
+        js = typed_json.to_json(obj, ty)
+        if expected_json is not _UNDEFINED_JSON:
+            assert js == expected_json
         js = loads(dumps(js))
         assert strict_typed_json.from_json(js, ty) == obj
     except AssertionError:
         # helps when debugging test failures
-        print(f"Cannot convert {obj} to {ty}")  # noqa: T201
+        expected_json_info = ("" if expected_json is _UNDEFINED_JSON
+                              else f", expected json: {expected_json}")
+        print(f"Cannot convert {obj} to {ty}"  # noqa: T201
+              f"{expected_json_info}, actual: {js}")
         raise
 
 
@@ -434,9 +457,10 @@ def _json_with_error(  # noqa: R901, PLR0911, C901
         return _typed_mapping_with_error(js, path, ty)
     if isclass(origin) and issubclass(origin, Mapping):
         return _mapping_with_error(js, path, ty)
-    if origin is Union:
-        assert len(get_args(ty)) == 1, str(get_args(ty))
-        return _mapping_with_error(js, path, get_args(ty)[0])
+    opts: Options[Any] | None = options_from(ty)
+    if opts:
+        # assumes that custom from-json does not work with original json
+        return js, FromJsonConversionError(js, path, ty)
     fail(f"Unexpected type: {ty} (origin: {origin})")
 
 
@@ -545,6 +569,10 @@ def _ambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_dataclass)
 
 
+def _unambiguous_annotated_types_factories() -> Sequence[ObjectFactory[Any]]:
+    return (_random_annotated_int,)
+
+
 def _unambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
     return (_random_int,
             _random_float,
@@ -553,16 +581,37 @@ def _unambiguous_types_factories() -> Sequence[ObjectFactory[Any]]:
             _random_str,
             _random_sequence,
             _random_map,
-            _random_typed_map)
+            _random_typed_map,
+            *_unambiguous_annotated_types_factories())
 
 
 def _all_types_factories() -> Sequence[ObjectFactory[Any]]:
     return tuple(_ambiguous_types_factories()) + tuple(_unambiguous_types_factories())
 
 
+def _random_annotated_int(
+        size: int, factories: Sequence[ObjectFactory[Any]]
+) -> tuple[int, type[int], Json]:
+    i, ty, _js = _random_int(size, factories)
+
+    def from_str(s: str) -> int:
+        if isinstance(s, str):
+            return int(s)
+        msg = f"Expected str, but got: {s}: {type(s)}"
+        raise ValueError(msg)
+
+    # mypy does not recognize that Annotated should be treated as `ty`
+    # mypy does not infer _SourceType as str
+    return (i,
+            cast("type[int]",
+                 Annotated[ty, options(from_json=from_str, to_json=str)]),
+            str(i))
+
+
 def _random_int(
         _size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[int, type[int], Json]:
-    return randint(-2 ** 63, 2 ** 63 - 1), int, None
+    i = randint(-2 ** 63, 2 ** 63 - 1)
+    return i, int, i
 
 
 def _random_float(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
@@ -573,12 +622,13 @@ def _random_float(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
                 uniform(0, float_info.max),
                 float_info.max],
                 weights=[1, 3, 5, 3, 1])
-    return f[0], float, None
+    return f[0], float, f[0]
 
 
 def _random_bool(_size: int, _factories: Sequence[ObjectFactory[Any]]) \
         -> tuple[bool, type[bool], Json]:
-    return bool(randint(0, 1)), bool, None
+    b = bool(randint(0, 1))
+    return b, bool, b
 
 
 def _none(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[None, Any, Json]:
@@ -586,7 +636,8 @@ def _none(_size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[None, A
 
 
 def _random_str(size: int, _factories: Sequence[ObjectFactory[Any]]) -> tuple[str, type[str], Json]:
-    return "".join(choices(printable, k=randrange(size))), str, None
+    s = "".join(choices(printable, k=randrange(size)))
+    return s, str, s
 
 
 def _random_datetime(
@@ -604,17 +655,18 @@ def _random_datetime(
     if isinstance(result, float):
         result = datetime.fromtimestamp(result, tz=UTC)
     assert isinstance(result, datetime)
-    return result, datetime, None
+    return result, datetime, result.isoformat()
 
 
 def _random_date(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
 ) -> tuple[date, type[date], Json]:
-    result = choices([date.min.toordinal(),
-                      randint(date.min.toordinal(), date.max.toordinal()),
-                      date.max.toordinal()],
-                     weights=[1, 5, 1])[0]
-    return date.fromordinal(result), date, None
+    result_ordinal = choices([date.min.toordinal(),
+                              randint(date.min.toordinal(), date.max.toordinal()),
+                              date.max.toordinal()],
+                             weights=[1, 5, 1])[0]
+    result = date.fromordinal(result_ordinal)
+    return result, date, result.isoformat()
 
 
 def _random_time(
@@ -627,26 +679,29 @@ def _random_time(
                            microsecond=randrange(1000000)),
                       time.max],
                      weights=[1, 5, 1])[0]
-    return result, time, None
+    return result, time, str(result)
 
 
 def _random_uuid(
         _size: int, _factories: Sequence[ObjectFactory[Any]]
 ) -> tuple[UUID, type[UUID], Json]:
-    return uuid4(), UUID, None
+    u = uuid4()
+    return u, UUID, str(u)
 
 
 def _random_path(
         size: int, factories: Sequence[ObjectFactory[Any]]
 ) -> tuple[Path, type[Path], Json]:
     segments = (_random_str(size, factories)[0] for _ in range(randint(1, size)))
-    return Path().joinpath(*segments), Path, None
+    path = Path().joinpath(*segments)
+    return path, Path, str(path)
 
 
 def _random_bytes(
         size: int, _factories: Sequence[ObjectFactory[Any]]
 ) -> tuple[bytes, type[bytes], Json]:
-    return bytes(randint(0, 255) for _ in range(randint(1, size))), bytes, None
+    b = bytes(randint(0, 255) for _ in range(randint(1, size)))
+    return b, bytes, b64encode(b).decode("ascii")
 
 
 def _random_url(
@@ -657,48 +712,57 @@ def _random_url(
 
     # inspection is wrong
     # noinspection PyArgumentList
-    return SplitResult(scheme=random_ascii_str().lower(),
-                       netloc=random_ascii_str(),
-                       path=f"/{random_ascii_str()}",
-                       query=random_ascii_str(),
-                       fragment=random_ascii_str()), SplitResult, None
+    result = SplitResult(scheme=random_ascii_str().lower(), netloc=random_ascii_str(),
+                         path=f"/{random_ascii_str()}", query=random_ascii_str(),
+                         fragment=random_ascii_str())
+    return result, SplitResult, urlunsplit(result)
 
 
-def _random_sequence(size: int, _factories: Sequence[ObjectFactory[_T]]) \
+def _random_sequence(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Sequence[_T], type[Sequence[_T]], Json]:
-    seq, types, js = _random_values(size, _unambiguous_types_factories())
+    unambiguous_factories = tuple(
+        frozenset(_unambiguous_types_factories())
+        # an annotated type and the non-annotated one are ambiguous in Unions
+        .difference(frozenset(_unambiguous_annotated_types_factories()))
+        .intersection(frozenset(factories)))
+    seq, types, js = _random_values(size, unambiguous_factories)
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
     element_type: TypeAlias = cast("type", Union[*types] if seq else Any)
-    return list(seq), Sequence[element_type], js
+    return list(seq), Sequence[element_type], list(js)
 
 
 def _random_homogeneous_sequence(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Sequence[_T], type[Sequence[_T]], Json]:
     seq, types, js = _random_values(size, factories)
-    # Union[types[0]] is not a valid type so cast to a type
+    # types[0] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise element_type is not a valid type
     # noinspection PyTypeHints
     element_type: TypeAlias = cast("type", types[0] if seq else Any)
     return ([e for e, ty in zip(seq, types, strict=False) if ty == types[0]],
             Sequence[element_type],
-            js)
+            list(js))
 
 
 def _random_untyped_list(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Sequence[_T], type[list[Any]], Json]:
     unambiguous_factories = tuple(
-        frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
+        frozenset(_unambiguous_types_factories())
+        # annotations get lost in untyped maps
+        .difference(frozenset(_unambiguous_annotated_types_factories()))
+        .intersection(frozenset(factories)))
     seq, _types, js = _random_values(size, unambiguous_factories)
-    return list(seq), list, js
+    return list(seq), list, list(js)
 
 
 def _random_tuple(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[tuple[_T, ...], type[tuple[_T, ...]], Json]:
     seq, types, js = _random_values(size, factories)
     # tuple[*var] it interpreted as object, so it needs a cast
-    return tuple(seq), cast("type[tuple[_T, ...]]", tuple[*types]), js  # type: ignore[valid-type]
+    return (tuple(seq),
+            cast("type[tuple[_T, ...]]", tuple[*types]),  # type: ignore[valid-type]
+            list(js))
 
 
 def _insert_random_ellipsis(types: Sequence[type], allow_ellipsis_at_first_pos: bool = True) \
@@ -719,7 +783,10 @@ def _random_tuple_with_ellipsis(
         insert_random_ellipsis: Callable[[Sequence[type]], Sequence[type]] = _insert_random_ellipsis
 ) -> tuple[tuple[_T, ...], type[tuple[_T, ...]], Json]:
     unambiguous_factories = tuple(
-        frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
+        frozenset(_unambiguous_types_factories())
+        # annotations might get lost when replace by ellipsis
+        .difference(frozenset(_unambiguous_annotated_types_factories()))
+        .intersection(frozenset(factories)))
     seq, types, js = _random_values(size, unambiguous_factories)
     # tuple[*var] it interpreted as object, so it needs a cast
     return (
@@ -732,7 +799,10 @@ def _random_tuple_with_ellipsis(
 def _random_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Mapping[str, _T], type[Mapping[str, _T]], Json]:
     unambiguous_factories = tuple(
-        frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
+        frozenset(_unambiguous_types_factories())
+        # an annotated type and the non-annotated one are ambiguous in Unions
+        .difference(frozenset(_unambiguous_annotated_types_factories()))
+        .intersection(frozenset(factories)))
     vals, types, json_vals = _random_values(size, unambiguous_factories)
     # Union[*types] is not a valid type so cast to a type
     # TypeAliases shall be top-level, but otherwise value_types is not a valid type
@@ -763,7 +833,10 @@ def _random_homogeneous_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
 def _random_untyped_map(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Mapping[str, _T], type[Mapping[str, Any]], Json]:
     unambiguous_factories = tuple(
-        frozenset(_unambiguous_types_factories()).intersection(frozenset(factories)))
+        frozenset(_unambiguous_types_factories())
+        # annotations get lost in untyped maps
+        .difference(frozenset(_unambiguous_annotated_types_factories()))
+        .intersection(frozenset(factories)))
     vals, _types, json_vals = _random_values(size, unambiguous_factories)
     keys = [_random_symbol() for _ in vals]
     return dict(zip(keys, vals, strict=False)), Mapping, dict(zip(keys, json_vals, strict=False))
@@ -814,6 +887,10 @@ def _random_symbol() -> str:
     return "".join([choice(ascii_letters), *choices(ascii_letters + digits, k=10)])
 
 
+def _random_choice() -> bool:
+    return bool(randint(0, 1))
+
+
 def _random_values(size: int, factories: Sequence[ObjectFactory[_T]]) \
         -> tuple[Sequence[_T], Sequence[type[_T]], Sequence[Json]]:
     previous_types: list[type[_T]] = []
@@ -859,8 +936,11 @@ class _StringToFloat(FromJsonConverter[float, None]):
 
 class _FloatToString(ToJsonConverter[float]):
 
-    def can_convert(self, o: Any) -> bool:
+    def can_convert(self, o: Any,
+                    _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> bool:
         return isinstance(o, float)
 
-    def convert(self, o: SourceType_contra, to_json: Callable[[Any], Json]) -> Json:
+    def convert(self, o: SourceType_contra,
+                to_json: Callable[[Any], Json],
+                _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> Json:
         return str(o)

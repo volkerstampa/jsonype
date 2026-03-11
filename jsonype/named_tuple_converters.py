@@ -5,10 +5,9 @@ from inspect import isclass
 from typing import (Any, NamedTuple, Protocol, Self, TypeVar, cast,  # pylint: disable=unused-import
                     runtime_checkable)
 
-from jsonype.base_types import Json, JsonPath
-from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
-                                                ParameterizedTypeInfo, TargetType_co)
-from jsonype.basic_to_json_converters import ToJsonConverter
+from jsonype.base_types import Json, JsonPath, ParameterizedTypeInfo, TargetType_co
+from jsonype.basic_from_json_converters import FromJsonConversionError, FromJsonConverter
+from jsonype.basic_to_json_converters import ContainerElementToJson, ToJsonConverter
 
 NamedTupleTarget_co = TypeVar("NamedTupleTarget_co", bound="NamedTuple", covariant=True)
 NamedTupleSource_contra = TypeVar("NamedTupleSource_contra", bound="NamedTuple", contravariant=True)
@@ -110,12 +109,12 @@ class FromNamedTuple(ToJsonConverter[NamedTupleSource_contra]):
     :class:`ToJsonConverter`.
     """
 
-    def can_convert(self, o: Any) -> bool:
+    def can_convert(self, o: Any,
+                    _source_type_info: ParameterizedTypeInfo[Any] | None = None) -> bool:
         return isinstance(o, _NamedTupleProtocol)
 
-    def convert(
-            self, o: NamedTupleSource_contra, to_json: Callable[[Any], Json]
-    ) -> Json:
-        # _asdict is actually public
-        # noinspection PyProtectedMember
-        return {k: to_json(v) for k, v in o._asdict().items()}
+    def convert(self, o: NamedTupleSource_contra,
+                to_json: ContainerElementToJson,
+                source_type_info: ParameterizedTypeInfo[Any] | None = None) -> Json:
+        type_hints = source_type_info.annotations if source_type_info else {}
+        return {k: to_json(v, type_hints.get(k)) for k, v in o._asdict().items()}

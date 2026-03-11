@@ -3,7 +3,8 @@
 # pylint: disable=useless-import-alias
 from .base_types import Json as Json  # noqa: F401
 from .base_types import JsonPath as JsonPath  # noqa: F401
-from .base_types import opts as opts  # noqa: F401
+from .base_types import ParameterizedTypeInfo as ParameterizedTypeInfo  # noqa: F401
+from .base_types import options as options  # noqa: F401
 
 # isort: off
 from .basic_from_json_converters import (FromJsonConversionError  # noqa: F401
@@ -14,8 +15,6 @@ from .basic_from_json_converters import (FunctionBasedFromSimpleJsonConverter   
 from .basic_from_json_converters import FromJsonConverter as FromJsonConverter  # noqa: F401
 
 # isort: off
-from .basic_from_json_converters import (ParameterizedTypeInfo  # noqa: F401
-                                         as ParameterizedTypeInfo)
 # isort: on
 from .basic_from_json_converters import ToAny as ToAny  # noqa: F401
 from .basic_from_json_converters import ToList as ToList  # noqa: F401

@@ -1,13 +1,13 @@
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
-from jsonype.base_types import Json, JsonPath, Options
-from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter,
-                                                ParameterizedTypeInfo, ToAny, ToList, ToLiteral,
-                                                ToMapping, ToNone, ToSimple, ToTuple,
-                                                ToTypedMapping, ToUnion)
+from jsonype.base_types import Json, JsonPath, ParameterizedTypeInfo
+from jsonype.basic_from_json_converters import (FromJsonConversionError, FromJsonConverter, ToAny,
+                                                ToList, ToLiteral, ToMapping, ToNone, ToSimple,
+                                                ToTuple, ToTypedMapping, ToUnion)
 from jsonype.basic_to_json_converters import (FromMapping, FromNone, FromSequence, FromSimple,
-                                              ToJsonConverter, UnsupportedSourceTypeError)
+                                              FromTypedMapping, ToJsonConverter,
+                                              UnsupportedSourceTypeError)
 from jsonype.dataclass_converters import FromDataclass, ToDataclass
 from jsonype.named_tuple_converters import FromNamedTuple, ToNamedTuple
 from jsonype.simple_str_based_converters import (FromBytes, FromPath, FromUrl, FromUUID, ToBytes,
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from jsonype.basic_to_json_converters import ContainerElementToJson
 
 TargetType = TypeVar("TargetType")
+SourceType = TypeVar("SourceType")
 JsonType = TypeVar("JsonType")
 
 
@@ -115,7 +116,7 @@ class TypedJson:
         self._from_json_converters = from_json_converters
         self._to_json_converters = to_json_converters
 
-    def to_json(self, o: Any, opts: Options[Any] | None = None) -> Json:
+    def to_json(self, o: Any, source_type: type[SourceType] | None = None) -> Json:
         """Convert the given object to a JSON-representation.
 
         The JSON-representation can afterward be converted to a string containing
@@ -123,23 +124,26 @@ class TypedJson:
 
         Args:
             o: The object to be converted.
-            opts: Options or hints for the conversion
+            source_type: The type of ``o``. If ``None``
+                this is computed as ``type(o)``, however this may lack type-hints, in particular
+                ``Annotated`` ones.
         Returns:
             The JSON-representation.
         Raises:
             ValueError: if the object cannot be converted to a JSON-representation
                 as no suitable converter exists for the object's type.
         """
-        if opts:
-            return opts.to_json(o)
+        source_type_info = ParameterizedTypeInfo.from_optionally_generic(source_type or type(o))
+        if source_type_info.opts:
+            return source_type_info.opts.to_json(o)
         converter = next((conv for conv in self._to_json_converters if
-                          conv.can_convert(o)),
+                          conv.can_convert(o, source_type_info)),
                          None)
         if not converter:
             raise UnsupportedSourceTypeError(o)
         # mypy derives a Callable type for self.to_json, but Callables cannot define
         # optional parameters
-        return converter.convert(o, cast("ContainerElementToJson", self.to_json))
+        return converter.convert(o, cast("ContainerElementToJson", self.to_json), source_type_info)
 
     def from_json(self, js: Json, target_type: type[TargetType]) -> TargetType:
         """Convert the given JSON-representation to an object of the given type.
@@ -163,7 +167,11 @@ class TypedJson:
     ) -> TargetType:
         target_type_info = ParameterizedTypeInfo.from_optionally_generic(target_type)
         if target_type_info.opts:
-            return target_type_info.opts.from_json(js)
+            try:
+                return target_type_info.opts.from_json(js)
+            except Exception as e:
+                raise FromJsonConversionError(
+                    js, path, target_type, "Custom deserializer failed with {e}") from e
         # According to mypy the type is correct (type | None instead of ParamSpec)
         # noinspection PyTypeChecker
         converter = next((conv for conv in self._from_json_converters if
@@ -217,6 +225,7 @@ class TypedJson:
                 FromNamedTuple(),
                 FromDataclass(),
                 FromSequence(),
+                FromTypedMapping(),
                 FromMapping(),
             )
         )
@@ -265,6 +274,7 @@ class TypedJson:
         - :class:`FromNamedTuple`
         - :class:`FromDataclass`
         - :class:`FromSequence`
+        - :class:`FromTypedMapping`
         - :class:`FromMapping`
 
         Args:

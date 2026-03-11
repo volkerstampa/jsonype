@@ -128,10 +128,12 @@ ignore = ["D100", "D101", "D102", "D103", "D104", "D105", "D107", "D203", "D213"
     "PYI042"]
 # pylint: E, R, pyflakes: W, vulture: V
 external = ["E", "R", "W", "V"]
+# dont remove print statements
+unfixable = ["T201"]
 
 [tool.pytest.ini_options]
 cache_dir = "build/pytest_cache"
-addopts = "--cov --cov-fail-under=100"
+addopts = "--cov --cov-fail-under=100 --verbose --verbose"
 
 [tool.coverage.run]
 source = ["jsonype"]
